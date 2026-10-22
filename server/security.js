@@ -313,7 +313,7 @@ function securityHeadersMiddleware(req, res, next) {
     "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob: https:; " +
-    "media-src 'self' data: blob:; " +
+    "media-src 'self' data: blob: https:; " +
     "connect-src 'self' wss: ws: https:; " +
     "font-src 'self'; " +
     "object-src 'none'; " +
@@ -334,9 +334,9 @@ function securityHeadersMiddleware(req, res, next) {
   // Strict Transport Security (HSTS - 2 years)
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
 
-  // Cross-Origin Isolation
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Cross-Origin Isolation & Sharing (Cross-Origin allows Android WebView & PWAs to load avatars/media)
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
 
   // Strict Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

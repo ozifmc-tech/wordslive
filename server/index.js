@@ -105,6 +105,8 @@ app.use('/api', apiGeneralLimiter);
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), {
   setHeaders: (res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
 }));
 app.use(express.static(path.join(__dirname, '../public')));

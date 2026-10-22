@@ -116,6 +116,14 @@ try {
   }
 } catch (_) {}
 
+// Auto-repair: restore passwords if previously placed in avatar_url during registration
+try {
+  const broken = db.prepare("SELECT id, avatar_url FROM users WHERE (password IS NULL OR password = '') AND avatar_url LIKE '%:%' AND avatar_url NOT LIKE '/%' AND avatar_url NOT LIKE 'http%'").all();
+  for (const b of broken) {
+    db.prepare("UPDATE users SET password = ?, avatar_url = '' WHERE id = ?").run(b.avatar_url, b.id);
+  }
+} catch (_) {}
+
 // Prepared statement helpers
 const stmts = {
   // User queries
@@ -127,6 +135,11 @@ const stmts = {
   createUser: db.prepare(`
     INSERT INTO users (email, username, display_name, avatar_color, avatar_url, bio, created_at, last_seen, is_online)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `),
+
+  createUserWithPassword: db.prepare(`
+    INSERT INTO users (email, username, display_name, avatar_color, avatar_url, bio, password, created_at, last_seen, is_online)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
   `),
 
   updateUserStatus: db.prepare('UPDATE users SET is_online = ?, last_seen = ? WHERE id = ?'),

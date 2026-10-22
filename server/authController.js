@@ -581,20 +581,30 @@ async function registerWithPassword(req, res) {
       });
     }
 
+    // Check email uniqueness
+    const existingEmail = stmts.getUserByEmail.get(email);
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: 'Ushbu elektron pochta allaqachon ro\'yxatdan o\'tgan. Iltimos, boshqa pochta kiriting yoki parolingiz orqali kiring.'
+      });
+    }
+
     // Hash password
     const hashedPassword = hashPassword(password);
     const now = Date.now();
     const avatarColor = getRandomColor();
 
-    const insertResult = stmts.createUser.run(
+    const insertResult = stmts.createUserWithPassword.run(
       email,
       username,
       displayName,
       avatarColor,
-      hashedPassword,
-      '',
-      now,
-      now
+      '', // avatar_url
+      '', // bio
+      hashedPassword, // password
+      now, // created_at
+      now  // last_seen
     );
 
     const newUser = stmts.getUserById.get(insertResult.lastInsertRowid);

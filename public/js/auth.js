@@ -1032,9 +1032,10 @@ const Auth = (() => {
           avatarPreview.style.backgroundColor = currentUser.avatarColor || 'var(--primary)';
           avatarPreview.style.color = '#ffffff';
           if (currentUser.avatarUrl && typeof currentUser.avatarUrl === 'string' && currentUser.avatarUrl.trim() !== '') {
+            const resolved = typeof window.resolveMediaUrl === 'function' ? window.resolveMediaUrl(currentUser.avatarUrl) : currentUser.avatarUrl;
             avatarPreview.innerHTML = `
               <span style="position:relative; z-index:1; font-weight:700;">${initial}</span>
-              <img src="${currentUser.avatarUrl}" class="avatar-img-circle" alt="" 
+              <img src="${resolved}" class="avatar-img-circle" alt="" 
                    style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; border-radius:50%;"
                    onerror="this.remove();"
                    onload="const fb=this.previousElementSibling; if(fb) fb.remove();">
