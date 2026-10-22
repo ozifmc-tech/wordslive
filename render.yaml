@@ -1,9 +1,9 @@
 services:
   - type: web
     name: wordslive
-    env: node
+    runtime: node
     plan: free
-    region: frankfurt # Eng yaqin va tezkor (O'zbekiston uchun ~50-65ms ping)
+    region: frankfurt
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -22,8 +22,8 @@ services:
       - key: SMTP_SECURE
         value: true
       - key: SMTP_USER
-        sync: false
+        value: ozif.mc@gmail.com
       - key: SMTP_PASS
-        sync: false
+        value: htmabwuerlwbgvii
       - key: SMTP_FROM
-        value: WordsLive <noreply.wordslive@gmail.com>
+        value: WordsLive <ozif.mc@gmail.com>
