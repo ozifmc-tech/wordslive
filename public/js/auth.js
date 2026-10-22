@@ -348,7 +348,49 @@ const Auth = (() => {
     }
   }
 
-  // Handle avatar file selection & upload
+  // Helper: Client-side smooth avatar compression (resizes heavy phone photos to ~80KB for 50ms upload)
+  function compressAvatarPhoto(file, maxSize = 600, quality = 0.85) {
+    return new Promise((resolve) => {
+      if (file.type === 'image/gif' || file.type === 'image/svg+xml') {
+        return resolve(file);
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            } else {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const safeName = (file.name || 'avatar.jpg').replace(/\.[^.]+$/, '.jpg');
+              resolve(new File([blob], safeName, { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Handle avatar file selection & upload (Instant optimistic preview + smooth background upload)
   async function handleAvatarFileSelected(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -358,8 +400,8 @@ const Auth = (() => {
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      App.showToast('Rasm hajmi juda katta (maksimal 20MB)');
+    if (file.size > 25 * 1024 * 1024) {
+      App.showToast('Rasm hajmi juda katta (maksimal 25MB)');
       return;
     }
 
@@ -369,8 +411,19 @@ const Auth = (() => {
       statusEl.style.color = 'var(--primary)';
     }
 
-    const formData = new FormData();
-    formData.append('avatar', file);
+    // 1. Instant Optimistic Preview (0ms delay)
+    let localBlobUrl = null;
+    try {
+      localBlobUrl = URL.createObjectURL(file);
+      const preview = document.getElementById('prof-avatar-preview');
+      if (preview) {
+        preview.innerHTML = `<img src="${localBlobUrl}" class="avatar-img-circle" alt="Avatar">`;
+      }
+      const topBarAvatar = document.getElementById('my-profile-avatar');
+      if (topBarAvatar) {
+        topBarAvatar.innerHTML = `<img src="${localBlobUrl}" class="avatar-img-circle" alt="Avatar">`;
+      }
+    } catch (_) {}
 
     const activeToken = token || localStorage.getItem('wisdom_chat_token') || '';
     if (!activeToken) {
@@ -379,6 +432,12 @@ const Auth = (() => {
     }
 
     try {
+      // 2. High-speed client compression
+      const readyFile = await compressAvatarPhoto(file, 600, 0.85);
+
+      const formData = new FormData();
+      formData.append('avatar', readyFile);
+
       const res = await fetch('/api/auth/upload-avatar', {
         method: 'POST',
         headers: {
@@ -394,7 +453,7 @@ const Auth = (() => {
         saveAccountToStorage(data.user, activeToken);
         updateProfileBarUI();
 
-        // Update preview in profile modal
+        // Update preview in profile modal with permanent resolved URL
         const preview = document.getElementById('prof-avatar-preview');
         if (preview && data.avatarUrl) {
           const resolved = typeof window.resolveMediaUrl === 'function' ? window.resolveMediaUrl(data.avatarUrl) : data.avatarUrl;
@@ -409,11 +468,16 @@ const Auth = (() => {
       } else {
         if (statusEl) statusEl.textContent = '';
         App.showToast(data.message || 'Rasm yuklashda xatolik');
+        updateProfileBarUI();
       }
     } catch (err) {
       if (statusEl) statusEl.textContent = '';
       App.showToast('Rasm yuklashda server xatoligi');
+      updateProfileBarUI();
     } finally {
+      if (localBlobUrl) {
+        setTimeout(() => { try { URL.revokeObjectURL(localBlobUrl); } catch (_) {} }, 5000);
+      }
       if (typeof App !== 'undefined' && App.setMediaPickingActive) {
         App.setMediaPickingActive(false);
       }
@@ -421,12 +485,14 @@ const Auth = (() => {
     }
   }
 
-  // Switch between Step 1, 2, 3
+  // Switch between Step 1, 2, 3 & Password Login
   function showStep(stepName) {
     const stepEmail = document.getElementById('auth-step-email');
     const stepOtp = document.getElementById('auth-step-otp');
     const stepProfile = document.getElementById('auth-step-profile');
     const pwdLogin = document.getElementById('auth-step-password-login');
+    const tabOtp = document.getElementById('tab-auth-mode-otp');
+    const tabPwd = document.getElementById('tab-auth-mode-pwd');
 
     if (stepEmail) stepEmail.style.display = 'none';
     if (stepOtp) stepOtp.style.display = 'none';
@@ -436,18 +502,26 @@ const Auth = (() => {
     if (stepName === 'email' && stepEmail) {
       stepEmail.style.display = 'flex';
       sessionStorage.setItem('wisdom_pending_step', 'email');
+      if (tabOtp) tabOtp.classList.add('active');
+      if (tabPwd) tabPwd.classList.remove('active');
       renderAuthQuickAccounts();
     }
     if (stepName === 'otp' && stepOtp) {
       stepOtp.style.display = 'flex';
       sessionStorage.setItem('wisdom_pending_step', 'otp');
+      if (tabOtp) tabOtp.classList.add('active');
+      if (tabPwd) tabPwd.classList.remove('active');
     }
     if (stepName === 'profile' && stepProfile) {
       stepProfile.style.display = 'flex';
       sessionStorage.setItem('wisdom_pending_step', 'profile');
+      if (tabOtp) tabOtp.classList.add('active');
+      if (tabPwd) tabPwd.classList.remove('active');
     }
     if (stepName === 'password' && pwdLogin) {
       pwdLogin.style.display = 'flex';
+      if (tabOtp) tabOtp.classList.remove('active');
+      if (tabPwd) tabPwd.classList.add('active');
     }
   }
 
