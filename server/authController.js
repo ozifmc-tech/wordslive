@@ -231,13 +231,19 @@ async function sendOtp(req, res) {
     // Send via email service
     const emailResult = await sendOtpEmail(email, code);
 
+    if (!emailResult.sent) {
+      return res.status(500).json({
+        success: false,
+        message: emailResult.message || 'Gmail orqali tasdiqlash kodini yuborishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.'
+      });
+    }
+
     const existingUser = stmts.getUserByEmail.get(email);
 
     return res.json({
       success: true,
-      message: emailResult.message,
-      isExistingUser: !!existingUser,
-      devCode: emailResult.devCode || undefined
+      message: 'Tasdiqlash kodi Gmailingizga muvaffaqiyatli yuborildi!',
+      isExistingUser: !!existingUser
     });
   } catch (err) {
     console.error('Send OTP xatolik:', err);

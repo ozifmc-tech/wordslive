@@ -507,7 +507,7 @@ const Auth = (() => {
     btn.textContent = 'Yuborilmoqda...';
 
     const controller = new AbortController();
-    const abortTimeout = setTimeout(() => controller.abort(), 6000);
+    const abortTimeout = setTimeout(() => controller.abort(), 12000);
 
     try {
       const res = await fetch('/api/auth/send-otp', {
@@ -530,19 +530,6 @@ const Auth = (() => {
       sessionStorage.setItem('wisdom_pending_email', email);
       sessionStorage.setItem('wisdom_otp_expires', (Date.now() + 600 * 1000).toString());
       App.showToast(data.message || 'Kod Gmailingizga yuborildi!');
-
-      // Check for devCode
-      const devAlert = document.getElementById('dev-code-alert');
-      if (data.devCode) {
-        devAlert.style.display = 'block';
-        devAlert.innerHTML = `<strong>Sinov rejimi:</strong> Tasdiqlash kodi: <span style="font-size:18px; font-weight:800; letter-spacing:3px;">${data.devCode}</span>`;
-        const digits = document.querySelectorAll('.otp-digit');
-        data.devCode.split('').forEach((d, i) => {
-          if (digits[i]) digits[i].value = d;
-        });
-      } else {
-        if (devAlert) devAlert.style.display = 'none';
-      }
 
       showStep('otp');
       startOtpTimer(600);

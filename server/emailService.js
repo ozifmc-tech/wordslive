@@ -51,8 +51,7 @@ async function sendOtpEmail(toEmail, code) {
   if (!transporter) {
     return {
       sent: false,
-      devCode: code,
-      message: 'SMTP sozlanmagan. Tasdiqlash kodi ekranda ko\'rsatildi.'
+      message: 'Email xizmati sozlanmagan.'
     };
   }
 
@@ -109,7 +108,7 @@ async function sendOtpEmail(toEmail, code) {
     });
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('SMTP timeout: 4.5 soniyada javob bermadi')), 4500)
+      setTimeout(() => reject(new Error('Gmail serveri javob bermadi')), 9000)
     );
 
     const info = await Promise.race([sendPromise, timeoutPromise]);
@@ -121,11 +120,9 @@ async function sendOtpEmail(toEmail, code) {
     };
   } catch (err) {
     console.error(`[EMAIL SERVICE XATOLIK]:`, err.message);
-    // Instant fallback with devCode so user is NEVER blocked!
     return {
       sent: false,
-      devCode: code,
-      message: 'Kod Gmailingizga yuborildi (sinov kodi ekranda ham chiqdi).'
+      message: 'Gmail orqali xat yuborishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.'
     };
   }
 }
