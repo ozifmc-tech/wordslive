@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2563eb">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-  <link rel="stylesheet" href="/css/style.css?v=2.8.5">
+  <link rel="stylesheet" href="/css/style.css?v=2.8.6">
   <script>
     // WordsLive Universal Server URL Detector (works seamlessly on Web, PWA, and Android APK)
     (function() {
@@ -174,12 +174,12 @@
           <div class="form-group">
             <label class="form-label">Gmailingizga yuborilgan 6 xonali kod</label>
             <div class="otp-inputs">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="0">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="1">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="2">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="3">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="4">
-              <input type="tel" maxlength="1" class="otp-digit" data-idx="5">
+              <input type="tel" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="otp-digit" data-idx="0">
+              <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="1">
+              <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="2">
+              <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="3">
+              <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="4">
+              <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="5">
             </div>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
@@ -740,9 +740,9 @@
   <div id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/js/dictionary.js?v=2.8.5"></script>
-  <script src="/js/auth.js?v=2.8.5"></script>
-  <script src="/js/chat.js?v=2.8.5"></script>
-  <script src="/js/app.js?v=2.8.5"></script>
+  <script src="/js/dictionary.js?v=2.8.6"></script>
+  <script src="/js/auth.js?v=2.8.6"></script>
+  <script src="/js/chat.js?v=2.8.6"></script>
+  <script src="/js/app.js?v=2.8.6"></script>
 </body>
 </html>

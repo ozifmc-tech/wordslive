@@ -139,14 +139,35 @@ const Auth = (() => {
       resendBtn.addEventListener('click', handleSendOtp);
     }
 
-    // 6. OTP digit inputs handling
+    // 6. OTP digit inputs handling (supports single type, paste, and Android keyboard suggestion chip)
     const digits = document.querySelectorAll('.otp-digit');
     digits.forEach((input, idx) => {
       input.addEventListener('input', (e) => {
-        const val = e.target.value.replace(/[^0-9]/g, '');
+        let val = e.target.value.replace(/[^0-9]/g, '');
+        if (val.length > 1) {
+          // Multi-digit entered (e.g. Android Autofill / Clipboard chip)
+          const chars = val.slice(0, 6).split('');
+          chars.forEach((c, i) => {
+            if (digits[i]) digits[i].value = c;
+          });
+          const lastIdx = Math.min(chars.length, digits.length) - 1;
+          if (digits[lastIdx]) digits[lastIdx].focus();
+          if (chars.length === 6) {
+            handleVerifyOtp();
+          }
+          return;
+        }
+
         e.target.value = val;
         if (val && idx < digits.length - 1) {
           digits[idx + 1].focus();
+        }
+
+        // Auto-verify if all 6 digits are typed
+        let code = '';
+        digits.forEach(d => { code += d.value.trim(); });
+        if (code.length === 6) {
+          handleVerifyOtp();
         }
       });
 
@@ -164,7 +185,10 @@ const Auth = (() => {
             if (digits[i]) digits[i].value = char;
           });
           const nextIdx = Math.min(pasted.length, digits.length - 1);
-          digits[nextIdx].focus();
+          if (digits[nextIdx]) digits[nextIdx].focus();
+          if (pasted.length === 6) {
+            handleVerifyOtp();
+          }
         }
       });
     });
@@ -694,7 +718,7 @@ const Auth = (() => {
           'x-device-id': getDeviceId()
         },
         body: JSON.stringify({
-          email: pendingEmail,
+          email: pendingEmail || localStorage.getItem('wisdom_pending_email') || '',
           username,
           displayName,
           deviceId: getDeviceId()
@@ -1026,6 +1050,9 @@ const Auth = (() => {
     sessionStorage.removeItem('wisdom_pending_email');
     sessionStorage.removeItem('wisdom_otp_expires');
     sessionStorage.removeItem('wisdom_last_view');
+    localStorage.removeItem('wisdom_pending_step');
+    localStorage.removeItem('wisdom_pending_email');
+    localStorage.removeItem('wisdom_otp_expires');
 
     saveAccountToStorage(newUser, newToken);
     renderAuthQuickAccounts();
