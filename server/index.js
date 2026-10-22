@@ -15,6 +15,7 @@ const {
   getMe, 
   updateProfile, 
   loginWithPassword, 
+  registerWithPassword,
   uploadAvatar,
   getSessions,
   terminateSession,
@@ -45,10 +46,17 @@ const {
 const app = express();
 const server = http.createServer(app);
 
+// Ensure uploads directory exists on any host
+const fs = require('fs');
+const uploadsDirectory = path.join(__dirname, '../public/uploads');
+if (!fs.existsSync(uploadsDirectory)) {
+  fs.mkdirSync(uploadsDirectory, { recursive: true });
+}
+
 // Configure multer storage for media uploads (Photos, videos & voice notes up to 200MB)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../public/uploads'));
+    cb(null, uploadsDirectory);
   },
   filename: function (req, file, cb) {
     const ext = (path.extname(file.originalname) || '').toLowerCase();
@@ -133,6 +141,7 @@ app.put('/api/auth/profile', authMiddleware, updateProfile);
 app.post('/api/auth/update-profile', authMiddleware, updateProfile);
 app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), uploadAvatar);
 app.post('/api/auth/login-with-password', loginRateLimiter, loginWithPassword);
+app.post('/api/auth/register-with-password', loginRateLimiter, registerWithPassword);
 
 // Active Devices & Telegram-Style 7-Day Session Security
 app.get('/api/auth/sessions', authMiddleware, getSessions);

@@ -101,10 +101,36 @@ const Auth = (() => {
       });
     }
 
-    // 2. Login with Password button
+    // 2. Login with Password button & Direct Registration sub-tabs
+    const subtabLogin = document.getElementById('subtab-pwd-login');
+    const subtabRegister = document.getElementById('subtab-pwd-register');
+    const loginSubcard = document.getElementById('pwd-login-subcard');
+    const registerSubcard = document.getElementById('pwd-register-subcard');
+
+    if (subtabLogin && subtabRegister) {
+      subtabLogin.addEventListener('click', () => {
+        subtabLogin.classList.add('active');
+        subtabRegister.classList.remove('active');
+        if (loginSubcard) loginSubcard.style.display = 'block';
+        if (registerSubcard) registerSubcard.style.display = 'none';
+      });
+
+      subtabRegister.addEventListener('click', () => {
+        subtabRegister.classList.add('active');
+        subtabLogin.classList.remove('active');
+        if (loginSubcard) loginSubcard.style.display = 'none';
+        if (registerSubcard) registerSubcard.style.display = 'block';
+      });
+    }
+
     const loginPwdBtn = document.getElementById('btn-login-with-password');
     if (loginPwdBtn) {
       loginPwdBtn.addEventListener('click', handleLoginWithPassword);
+    }
+
+    const regPwdBtn = document.getElementById('btn-register-with-password');
+    if (regPwdBtn) {
+      regPwdBtn.addEventListener('click', handleRegisterWithPassword);
     }
 
     // Toggle login password visibility
@@ -346,11 +372,17 @@ const Auth = (() => {
     const formData = new FormData();
     formData.append('avatar', file);
 
+    const activeToken = token || localStorage.getItem('wisdom_chat_token') || '';
+    if (!activeToken) {
+      App.showToast('Iltimos, avval tizimga kiring');
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/upload-avatar', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${activeToken}`
         },
         body: formData
       });
@@ -359,13 +391,14 @@ const Auth = (() => {
       if (res.ok && data.success) {
         currentUser = data.user;
         localStorage.setItem('wisdom_chat_user', JSON.stringify(data.user));
-        saveAccountToStorage(data.user, token);
+        saveAccountToStorage(data.user, activeToken);
         updateProfileBarUI();
 
         // Update preview in profile modal
         const preview = document.getElementById('prof-avatar-preview');
         if (preview && data.avatarUrl) {
-          preview.innerHTML = `<img src="${data.avatarUrl}" class="avatar-img-circle" alt="Avatar">`;
+          const resolved = typeof window.resolveMediaUrl === 'function' ? window.resolveMediaUrl(data.avatarUrl) : data.avatarUrl;
+          preview.innerHTML = `<img src="${resolved}" class="avatar-img-circle" alt="Avatar">`;
         }
 
         if (statusEl) {
@@ -434,9 +467,10 @@ const Auth = (() => {
         avatarEl.style.color = '#ffffff';
 
         if (currentUser.avatarUrl && typeof currentUser.avatarUrl === 'string' && currentUser.avatarUrl.trim() !== '') {
+          const resolved = typeof window.resolveMediaUrl === 'function' ? window.resolveMediaUrl(currentUser.avatarUrl) : currentUser.avatarUrl;
           avatarEl.innerHTML = `
             <span class="avatar-fallback-letter" style="position:relative; z-index:1; font-weight:700;">${initial}</span>
-            <img src="${currentUser.avatarUrl}" class="avatar-img-circle" alt="" 
+            <img src="${resolved}" class="avatar-img-circle" alt="" 
                  style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; border-radius:50%;"
                  onerror="this.remove();"
                  onload="const fb=this.previousElementSibling; if(fb) fb.remove();">
@@ -513,6 +547,72 @@ const Auth = (() => {
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span>Kirish</span><span>➔</span>';
+    }
+  }
+
+  // Handle Direct Registration with Password
+  async function handleRegisterWithPassword() {
+    const nameInput = document.getElementById('pwd-reg-name-input');
+    const usernameInput = document.getElementById('pwd-reg-username-input');
+    const pwdInput = document.getElementById('pwd-reg-password-input');
+
+    const displayName = (nameInput ? nameInput.value : '').trim();
+    const username = (usernameInput ? usernameInput.value : '').trim().toLowerCase().replace(/^@/, '');
+    const password = (pwdInput ? pwdInput.value : '').trim();
+
+    if (displayName.length < 2) {
+      App.showToast('Iltimos, ismingizni kiriting (kamida 2 belgi)');
+      return;
+    }
+    if (username.length < 3) {
+      App.showToast('Nikingiz kamida 3 belgidan iborat bo\'lishi kerak');
+      return;
+    }
+    if (password.length < 6) {
+      App.showToast('Parol kamida 6 ta belgidan iborat bo\'lishi kerak');
+      return;
+    }
+
+    const btn = document.getElementById('btn-register-with-password');
+    btn.disabled = true;
+    btn.textContent = 'Yaratilmoqda...';
+
+    try {
+      const res = await fetch('/api/auth/register-with-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-id': getDeviceId()
+        },
+        body: JSON.stringify({ displayName, username, password, deviceId: getDeviceId() })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        App.showToast(data.message || 'Ro\'yxatdan o\'tishda xatolik');
+        btn.disabled = false;
+        btn.innerHTML = '<span>Ro\'yxatdan o\'tish va Kirish</span><span>🎉</span>';
+        return;
+      }
+
+      saveSession(data.token, data.user);
+      saveAccountToStorage(data.user, data.token);
+      updateProfileBarUI();
+
+      App.showToast(`Akkaunt yaratildi! Xush kelibsiz, ${data.user.displayName}!`);
+
+      if (typeof Chat !== 'undefined') {
+        Chat.connectSocket();
+        Chat.loadConversations();
+      }
+
+      App.switchToView('chat-dashboard');
+
+    } catch (err) {
+      App.showToast('Server bilan aloqa uzildi');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Ro\'yxatdan o\'tish va Kirish</span><span>🎉</span>';
     }
   }
 
@@ -822,8 +922,9 @@ const Auth = (() => {
     container.innerHTML = accounts.map(acc => {
       const isActive = currentUser && currentUser.id === acc.id;
       const avatarLetter = (acc.displayName || 'U').charAt(0).toUpperCase();
-      const avatarContent = acc.avatarUrl
-        ? `<img src="${acc.avatarUrl}" class="avatar-img-circle" alt="Avatar">`
+      const resolvedAvatar = (acc.avatarUrl && typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(acc.avatarUrl) : (acc.avatarUrl || '');
+      const avatarContent = resolvedAvatar
+        ? `<img src="${resolvedAvatar}" class="avatar-img-circle" alt="Avatar">`
         : avatarLetter;
 
       return `
@@ -860,8 +961,9 @@ const Auth = (() => {
     box.style.display = 'block';
     list.innerHTML = accounts.map(acc => {
       const initial = (acc.displayName || acc.username || 'U').charAt(0).toUpperCase();
-      const avatarHtml = acc.avatarUrl
-        ? `<img src="${acc.avatarUrl}" class="avatar-img-circle" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">`
+      const resolvedAvatar = (acc.avatarUrl && typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(acc.avatarUrl) : (acc.avatarUrl || '');
+      const avatarHtml = resolvedAvatar
+        ? `<img src="${resolvedAvatar}" class="avatar-img-circle" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="">`
         : initial;
 
       return `

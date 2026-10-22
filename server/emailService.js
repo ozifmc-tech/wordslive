@@ -77,6 +77,16 @@ async function sendViaResend(toEmail, code, htmlContent) {
       return { sent: true, message: 'Tasdiqlash kodi emailingizga muvaffaqiyatli yuborildi!' };
     } else {
       console.warn(`[EMAIL SERVICE] Resend status: ${res.status}, body: ${res.body}`);
+      try {
+        const parsed = JSON.parse(res.body);
+        if (parsed.name === 'validation_error' && (parsed.message || '').includes('only send testing emails')) {
+          return {
+            sent: false,
+            isDomainRestriction: true,
+            message: "Resend bepul tarifida xat faqat boshqaruvchi (ozif.mc@gmail.com) manziliga boradi. Boshqa akkauntlar uchun 'Parol orqali kirish' bo'limida yangi akkaunt yarating yoki resend.com da domen ulang."
+          };
+        }
+      } catch (_) {}
     }
   } catch (err) {
     console.error(`[EMAIL SERVICE] Resend xatosi:`, err.message);
@@ -139,6 +149,9 @@ async function sendOtpEmail(toEmail, code) {
   // Layer 1: Send via Resend HTTPS REST API (Port 443 — works 100% on Render and all cloud hosts)
   const resendResult = await sendViaResend(toEmail, code, htmlContent);
   if (resendResult && resendResult.sent) {
+    return resendResult;
+  }
+  if (resendResult && resendResult.isDomainRestriction) {
     return resendResult;
   }
 

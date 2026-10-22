@@ -543,6 +543,84 @@ function updateProfile(req, res) {
   }
 }
 
+// 4b. Register directly with Username & Password (for multi-account and non-Gmail users)
+async function registerWithPassword(req, res) {
+  try {
+    let { username, displayName, password, email } = req.body;
+    if (!username || !displayName || !password) {
+      return res.status(400).json({ success: false, message: 'Ism, nik va parol kiritilishi shart' });
+    }
+
+    username = username.trim().toLowerCase().replace(/^@/, '');
+    displayName = displayName.trim();
+    password = String(password).trim();
+    email = (email || `${username}@wordslive.app`).trim().toLowerCase();
+
+    if (displayName.length < 2 || displayName.length > 50) {
+      return res.status(400).json({ success: false, message: 'Ism 2 tadan 50 tagacha belgidan iborat bo\'lishi kerak' });
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]{3,25}$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nik faqat lotin harflari, raqamlar va pastki chiziqdan iborat bo\'lishi kerak (3-25 belgi)'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
+    }
+
+    // Check username uniqueness
+    const existingUser = stmts.getUserByUsername.get(username);
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: `Ushbu nik (@${username}) allaqachon band. Iltimos, boshqa nik tanlang.`
+      });
+    }
+
+    // Hash password
+    const hashedPassword = hashPassword(password);
+    const now = Date.now();
+    const avatarColor = getRandomColor();
+
+    const insertResult = stmts.createUser.run(
+      email,
+      username,
+      displayName,
+      avatarColor,
+      hashedPassword,
+      '',
+      now,
+      now
+    );
+
+    const newUser = stmts.getUserById.get(insertResult.lastInsertRowid);
+    const token = issueTokenWithSession(newUser, req);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Akkaunt muvaffaqiyatli yaratildi!',
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+        displayName: newUser.display_name,
+        avatarColor: newUser.avatar_color,
+        avatarUrl: newUser.avatar_url || '',
+        bio: newUser.bio,
+        hasPassword: true
+      }
+    });
+  } catch (err) {
+    console.error('Register with password error:', err);
+    return res.status(500).json({ success: false, message: 'Serverda xatolik yuz berdi' });
+  }
+}
+
 // 7. Login with @username + Password (Fast Alternative Login with Timing-Safe Verification)
 function loginWithPassword(req, res) {
   try {
@@ -783,6 +861,7 @@ module.exports = {
   getMe,
   updateProfile,
   loginWithPassword,
+  registerWithPassword,
   uploadAvatar,
   getSessions,
   terminateSession,

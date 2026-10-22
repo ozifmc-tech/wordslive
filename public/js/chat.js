@@ -955,9 +955,10 @@ const Chat = (() => {
         const avatarLetter = (c.partner.displayName || c.partner.username || 'U').charAt(0).toUpperCase();
         let avatarContent = `<span style="font-weight:700; color:#fff;">${avatarLetter}</span>`;
         if (c.partner.avatarUrl && typeof c.partner.avatarUrl === 'string' && c.partner.avatarUrl.trim() !== '') {
+          const resolved = (typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(c.partner.avatarUrl) : c.partner.avatarUrl;
           avatarContent = `
             <span style="font-weight:700; color:#fff; position:relative; z-index:1;">${avatarLetter}</span>
-            <img src="${c.partner.avatarUrl}" class="avatar-img-circle" alt="" 
+            <img src="${resolved}" class="avatar-img-circle" alt="" 
                  style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; border-radius:50%;"
                  onerror="this.remove();" 
                  onload="const fb=this.previousElementSibling; if(fb) fb.remove();">
@@ -1020,9 +1021,10 @@ const Chat = (() => {
         const avatarLetter = (u.displayName || u.username || 'U').charAt(0).toUpperCase();
         let avatarContent = `<span style="font-weight:700; color:#fff;">${avatarLetter}</span>`;
         if (u.avatarUrl && typeof u.avatarUrl === 'string' && u.avatarUrl.trim() !== '') {
+          const resolved = (typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(u.avatarUrl) : u.avatarUrl;
           avatarContent = `
             <span style="font-weight:700; color:#fff; position:relative; z-index:1;">${avatarLetter}</span>
-            <img src="${u.avatarUrl}" class="avatar-img-circle" alt="" 
+            <img src="${resolved}" class="avatar-img-circle" alt="" 
                  style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; border-radius:50%;"
                  onerror="this.remove();" 
                  onload="const fb=this.previousElementSibling; if(fb) fb.remove();">
@@ -1094,9 +1096,10 @@ const Chat = (() => {
       avatarEl.style.backgroundColor = partner.avatarColor || '#3b82f6';
       avatarEl.style.color = '#ffffff';
       if (partner.avatarUrl && typeof partner.avatarUrl === 'string' && partner.avatarUrl.trim() !== '') {
+        const resolved = (typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(partner.avatarUrl) : partner.avatarUrl;
         avatarEl.innerHTML = `
           <span style="font-weight:700; position:relative; z-index:1;">${initial}</span>
-          <img src="${partner.avatarUrl}" class="avatar-img-circle" alt="" 
+          <img src="${resolved}" class="avatar-img-circle" alt="" 
                style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2; border-radius:50%;"
                onerror="this.remove();" 
                onload="const fb=this.previousElementSibling; if(fb) fb.remove();">
@@ -1380,6 +1383,10 @@ const Chat = (() => {
       const isVideo = msg.mediaType === 'video' || urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.mov') || urlLower.endsWith('.mkv') || urlLower.endsWith('.3gp') || urlLower.endsWith('.m4v');
       isFile = msg.mediaType === 'file' || (!isVoice && !isVideo && !urlLower.endsWith('.jpg') && !urlLower.endsWith('.jpeg') && !urlLower.endsWith('.png') && !urlLower.endsWith('.webp') && !urlLower.endsWith('.gif') && !urlLower.endsWith('.svg') && !urlLower.endsWith('.bmp') && !urlLower.endsWith('.ico'));
 
+      const resolvedMediaUrl = (msg.mediaUrl && typeof window.resolveMediaUrl === 'function')
+        ? window.resolveMediaUrl(msg.mediaUrl)
+        : (msg.mediaUrl || '');
+
       if (isVoice) {
         const badgeHtml = `
           <div class="media-source-tag voice">
@@ -1390,7 +1397,7 @@ const Chat = (() => {
         mediaHtml = `
           <div class="msg-media-container" style="padding: 4px 2px;">
             ${badgeHtml}
-            <audio class="msg-audio-player" src="${msg.mediaUrl}" controls playsinline preload="metadata"></audio>
+            <audio class="msg-audio-player" src="${resolvedMediaUrl}" controls playsinline preload="metadata"></audio>
           </div>
         `;
       } else if (isVideo) {
@@ -1408,7 +1415,7 @@ const Chat = (() => {
         mediaHtml = `
           <div class="msg-media-container">
             ${badgeHtml}
-            <video class="msg-media-video" src="${msg.mediaUrl}" controls playsinline preload="metadata"></video>
+            <video class="msg-media-video" src="${resolvedMediaUrl}" controls playsinline preload="metadata"></video>
           </div>
         `;
       } else if (isFile) {
@@ -1424,7 +1431,8 @@ const Chat = (() => {
         else if (['txt', 'json', 'xml', 'md'].includes(ext)) fileIcon = '📝';
 
         const sizeStr = formatFileSize(msg.mediaSize);
-        const secureDownloadUrl = msg.mediaUrl.startsWith('/uploads/') ? '/api/chat/download/' + msg.mediaUrl.replace('/uploads/', '') + '?name=' + encodeURIComponent(fileName) : msg.mediaUrl;
+        const rawDownloadPath = msg.mediaUrl.startsWith('/uploads/') ? '/api/chat/download/' + msg.mediaUrl.replace('/uploads/', '') + '?name=' + encodeURIComponent(fileName) : msg.mediaUrl;
+        const secureDownloadUrl = (typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(rawDownloadPath) : rawDownloadPath;
 
         mediaHtml = `
           <div class="msg-media-container" style="padding: 2px 0;">
@@ -1452,7 +1460,7 @@ const Chat = (() => {
         mediaHtml = `
           <div class="msg-media-container">
             ${badgeHtml}
-            <img class="msg-media-image" src="${msg.mediaUrl}" alt="Rasm" onclick="Chat.openMediaLightbox('${msg.mediaUrl}')">
+            <img class="msg-media-image" src="${resolvedMediaUrl}" alt="Rasm" onclick="Chat.openMediaLightbox('${resolvedMediaUrl}')">
           </div>
         `;
       }

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2563eb">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-  <link rel="stylesheet" href="/css/style.css?v=2.8.6">
+  <link rel="stylesheet" href="/css/style.css?v=2.8.7">
   <script>
     // WordsLive Universal Server URL Detector (works seamlessly on Web, PWA, and Android APK)
     (function() {
@@ -25,6 +25,15 @@
         return window.location.origin;
       }
       window.API_BASE_URL = getBase();
+
+      window.resolveMediaUrl = function(url) {
+        if (!url || typeof url !== 'string' || url.trim() === '') return '';
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+          return url;
+        }
+        var base = (window.API_BASE_URL || 'https://wordslive.onrender.com').replace(/\/+$/, '');
+        return base + (url.startsWith('/') ? url : '/' + url);
+      };
 
       // Automatically route all relative /api/ and /uploads/ requests to API_BASE_URL
       const rawFetch = window.fetch;
@@ -216,28 +225,62 @@
           </button>
         </div>
 
-        <!-- Mode B: Quick Password Login (for other person or multi-device login) -->
+        <!-- Mode B: Quick Password Login & Direct Registration (for other person or multi-device login) -->
         <div class="auth-form-card" id="auth-step-password-login" style="display: none;">
-          <div class="form-group">
-            <label class="form-label">Nikingiz (@username)</label>
-            <div style="position: relative;">
-              <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
-              <input type="text" id="login-username-input" class="form-input" style="padding-left: 32px;" placeholder="baxtiyor" autocomplete="off" autocapitalize="none">
-            </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 16px; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 10px;">
+            <button type="button" id="subtab-pwd-login" class="tab-btn active" style="flex: 1; padding: 8px; font-size: 13px;">Kirish</button>
+            <button type="button" id="subtab-pwd-register" class="tab-btn" style="flex: 1; padding: 8px; font-size: 13px;">Yangi hisob</button>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Profil paroli</label>
-            <div style="position: relative;">
-              <input type="password" id="login-password-input" class="form-input" placeholder="Parolingizni kiriting">
-              <button type="button" id="btn-toggle-login-pwd" style="position: absolute; right: 10px; top: 12px; background: none; border: none; font-size: 16px; cursor: pointer;">👁️</button>
+          <!-- Submode 1: Login -->
+          <div id="pwd-login-subcard">
+            <div class="form-group">
+              <label class="form-label">Nikingiz (@username)</label>
+              <div style="position: relative;">
+                <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
+                <input type="text" id="login-username-input" class="form-input" style="padding-left: 32px;" placeholder="baxtiyor" autocomplete="off" autocapitalize="none">
+              </div>
             </div>
+
+            <div class="form-group">
+              <label class="form-label">Profil paroli</label>
+              <div style="position: relative;">
+                <input type="password" id="login-password-input" class="form-input" placeholder="Parolingizni kiriting">
+                <button type="button" id="btn-toggle-login-pwd" style="position: absolute; right: 10px; top: 12px; background: none; border: none; font-size: 16px; cursor: pointer;">👁️</button>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="btn-login-with-password">
+              <span>Kirish</span>
+              <span>➔</span>
+            </button>
           </div>
 
-          <button class="btn-primary" id="btn-login-with-password">
-            <span>Kirish</span>
-            <span>➔</span>
-          </button>
+          <!-- Submode 2: Direct Registration -->
+          <div id="pwd-register-subcard" style="display: none;">
+            <div class="form-group">
+              <label class="form-label">Ismingiz (Display Name)</label>
+              <input type="text" id="pwd-reg-name-input" class="form-input" placeholder="Masalan: Sardor" maxlength="50">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nikingiz (@username)</label>
+              <div style="position: relative;">
+                <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
+                <input type="text" id="pwd-reg-username-input" class="form-input" style="padding-left: 32px;" placeholder="sardor_01" maxlength="25" autocomplete="off" autocapitalize="none">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parol o'ylab toping (kamida 6 ta belgi)</label>
+              <input type="password" id="pwd-reg-password-input" class="form-input" placeholder="Yangi parol">
+            </div>
+
+            <button class="btn-primary" id="btn-register-with-password">
+              <span>Ro'yxatdan o'tish va Kirish</span>
+              <span>🎉</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -740,9 +783,9 @@
   <div id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/js/dictionary.js?v=2.8.6"></script>
-  <script src="/js/auth.js?v=2.8.6"></script>
-  <script src="/js/chat.js?v=2.8.6"></script>
-  <script src="/js/app.js?v=2.8.6"></script>
+  <script src="/js/dictionary.js?v=2.8.7"></script>
+  <script src="/js/auth.js?v=2.8.7"></script>
+  <script src="/js/chat.js?v=2.8.7"></script>
+  <script src="/js/app.js?v=2.8.7"></script>
 </body>
 </html>
