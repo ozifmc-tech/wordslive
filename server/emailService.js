@@ -122,7 +122,7 @@ async function sendOtpEmail(toEmail, code) {
     console.error(`[EMAIL SERVICE XATOLIK]:`, err.message);
     return {
       sent: false,
-      message: 'Gmail orqali xat yuborishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.'
+      message: `Gmail xatosi: ${err.message}`
     };
   }
 }
