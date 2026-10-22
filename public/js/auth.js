@@ -49,9 +49,9 @@ const Auth = (() => {
     }
 
     // Restore pending OTP step if user switched to Gmail app and back
-    const savedStep = sessionStorage.getItem('wisdom_pending_step');
-    const savedEmail = sessionStorage.getItem('wisdom_pending_email');
-    const expires = parseInt(sessionStorage.getItem('wisdom_otp_expires') || '0', 10);
+    const savedStep = sessionStorage.getItem('wisdom_pending_step') || localStorage.getItem('wisdom_pending_step');
+    const savedEmail = sessionStorage.getItem('wisdom_pending_email') || localStorage.getItem('wisdom_pending_email');
+    const expires = parseInt(sessionStorage.getItem('wisdom_otp_expires') || localStorage.getItem('wisdom_otp_expires') || '0', 10);
 
     if (savedStep === 'otp' && savedEmail && expires > Date.now()) {
       pendingEmail = savedEmail;
@@ -61,7 +61,7 @@ const Auth = (() => {
       const remainingSeconds = Math.max(1, Math.floor((expires - Date.now()) / 1000));
       startOtpTimer(remainingSeconds);
 
-      if (sessionStorage.getItem('wisdom_last_view') === 'auth') {
+      if (sessionStorage.getItem('wisdom_last_view') === 'auth' || localStorage.getItem('wisdom_last_view') === 'auth') {
         if (typeof App !== 'undefined' && App.switchToView) {
           App.switchToView('auth');
         }
@@ -69,7 +69,7 @@ const Auth = (() => {
     } else if (savedStep === 'profile' && savedEmail) {
       pendingEmail = savedEmail;
       showStep('profile');
-      if (sessionStorage.getItem('wisdom_last_view') === 'auth') {
+      if (sessionStorage.getItem('wisdom_last_view') === 'auth' || localStorage.getItem('wisdom_last_view') === 'auth') {
         if (typeof App !== 'undefined' && App.switchToView) {
           App.switchToView('auth');
         }
@@ -528,7 +528,11 @@ const Auth = (() => {
 
       pendingEmail = email;
       sessionStorage.setItem('wisdom_pending_email', email);
+      sessionStorage.setItem('wisdom_pending_step', 'otp');
       sessionStorage.setItem('wisdom_otp_expires', (Date.now() + 600 * 1000).toString());
+      localStorage.setItem('wisdom_pending_email', email);
+      localStorage.setItem('wisdom_pending_step', 'otp');
+      localStorage.setItem('wisdom_otp_expires', (Date.now() + 600 * 1000).toString());
       App.showToast(data.message || 'Kod Gmailingizga yuborildi!');
 
       showStep('otp');
@@ -583,6 +587,8 @@ const Auth = (() => {
     btn.disabled = true;
     btn.textContent = 'Tasdiqlanmoqda...';
 
+    const effectiveEmail = pendingEmail || localStorage.getItem('wisdom_pending_email') || (document.getElementById('auth-email-input') ? document.getElementById('auth-email-input').value.trim() : '');
+
     try {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -590,7 +596,7 @@ const Auth = (() => {
           'Content-Type': 'application/json',
           'x-device-id': getDeviceId()
         },
-        body: JSON.stringify({ email: pendingEmail, code, deviceId: getDeviceId() })
+        body: JSON.stringify({ email: effectiveEmail, code, deviceId: getDeviceId() })
       });
       const data = await res.json();
 

@@ -159,6 +159,15 @@ const stmts = {
     ORDER BY id DESC LIMIT 1
   `),
 
+  findValidOtpByCode: db.prepare(`
+    SELECT * FROM otp_codes 
+    WHERE LOWER(email) = LOWER(?)
+      AND code = ?
+      AND verified = 0
+      AND expires_at > ?
+    ORDER BY id DESC LIMIT 1
+  `),
+
   getLatestVerifiedOtp: db.prepare(`
     SELECT * FROM otp_codes 
     WHERE LOWER(email) = LOWER(?) AND verified = 1 

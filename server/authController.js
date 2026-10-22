@@ -260,27 +260,37 @@ async function verifyOtp(req, res) {
     }
 
     email = email.trim().toLowerCase();
-    code = String(code).trim();
+    // Strip any accidental non-digits (spaces, dashes, G- prefix, etc.)
+    code = String(code).replace(/[^0-9]/g, '').trim();
 
-    const otp = stmts.getLatestOtp.get(email);
+    const now = Date.now();
+
+    // Check if there is ANY valid unexpired OTP matching this code for this email (handles multiple sent emails)
+    let matchedOtp = null;
+    try {
+      matchedOtp = stmts.findValidOtpByCode.get(email, code, now);
+    } catch (_) {}
+
+    const otp = matchedOtp || stmts.getLatestOtp.get(email);
+
     if (!otp) {
       return res.status(400).json({ success: false, message: 'Tasdiqlash kodi topilmadi yoki eskirgan. Qaytadan so\'rang.' });
     }
 
-    if (otp.attempts >= config.MAX_OTP_ATTEMPTS) {
+    if (otp.attempts >= 10) {
       return res.status(400).json({ success: false, message: 'Urinishlar soni tugadi. Iltimos, yangi kod so\'rang.' });
     }
 
-    if (Date.now() > otp.expires_at) {
+    if (now > otp.expires_at) {
       return res.status(400).json({ success: false, message: 'Kodning amal qilish muddati tugagan (10 daqiqa o\'tdi).' });
     }
 
     if (otp.code !== code) {
       stmts.incrementOtpAttempts.run(otp.id);
-      const remainingAttempts = config.MAX_OTP_ATTEMPTS - (otp.attempts + 1);
+      const remainingAttempts = Math.max(0, 10 - (otp.attempts + 1));
       return res.status(400).json({ 
         success: false, 
-        message: `Noto'g'ri kod kiritildi. Qolgan urinishlar: ${Math.max(0, remainingAttempts)} ta.` 
+        message: `Noto'g'ri kod kiritildi. Qolgan urinishlar: ${remainingAttempts} ta.` 
       });
     }
 
