@@ -18,8 +18,8 @@
         const proto = window.location.protocol;
         const host = window.location.hostname;
         const port = window.location.port;
-        // In Android WebView / Capacitor / Cordova / file protocol or pure local port 80/empty
-        if (proto === 'capacitor:' || proto === 'file:' || (host === 'localhost' && (!port || port === '80'))) {
+        // In Android WebView / Capacitor / Cordova / file protocol or pure local port 80/443/empty
+        if (window.Capacitor || proto === 'capacitor:' || proto === 'file:' || (host === 'localhost' && (!port || port === '80' || port === '443'))) {
           return DEFAULT_REMOTE;
         }
         return window.location.origin;
