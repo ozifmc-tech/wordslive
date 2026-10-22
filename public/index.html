@@ -150,21 +150,21 @@
         <div id="auth-saved-accounts-box" style="display: none; width: 100%; max-width: 440px; margin-bottom: 16px;">
           <div style="background: var(--bg-card); border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);">
             <div style="font-weight: 700; font-size: 13px; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-              <span>⚡ Ulangan hisobingiz</span>
+              <span>⚡ Saqlangan hisoblar</span>
               <span style="font-size: 11px; background: rgba(37,99,235,0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">1 bosishda kirish</span>
             </div>
             <div id="auth-saved-accounts-list"></div>
             <button type="button" class="btn-secondary" onclick="if(window.Auth&&Auth.addNewAccount)Auth.addNewAccount()" style="width: 100%; margin-top: 10px; padding: 10px; font-size: 13px; font-weight: 700; border: 1.5px dashed var(--primary); color: var(--primary); background: rgba(37,99,235,0.04); display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-md);">
               <span>➕</span>
-              <span>Boshqa yoki Yangi hisob ochish</span>
+              <span>Yangi hisob ochish (Yangi Gmail orqali)</span>
             </button>
           </div>
         </div>
 
         <!-- Auth Method Selector Tabs -->
         <div class="chat-sub-nav" style="margin-bottom: 16px; width: 100%; max-width: 440px;">
-          <div class="sub-nav-item active" id="tab-auth-mode-otp" style="font-size: 13px;">📧 Gmail OTP</div>
-          <div class="sub-nav-item" id="tab-auth-mode-pwd" style="font-size: 13px;">🔑 Nik & Parol orqali</div>
+          <div class="sub-nav-item active" id="tab-auth-mode-otp" style="font-size: 13px;">📧 Gmail (Yangi hisob / Kirish)</div>
+          <div class="sub-nav-item" id="tab-auth-mode-pwd" style="font-size: 13px;">🔑 Parol bilan kirish</div>
         </div>
 
         <!-- Mode A, Step 1: Gmail Input -->
@@ -174,12 +174,12 @@
             <input type="email" id="auth-email-input" class="form-input" placeholder="misol@gmail.com" autocomplete="email">
           </div>
           <div class="info-alert">
-            ℹ️ Hisobingiz xavfsizligini ta'minlash uchun Gmailingizga 6 xonali tasdiqlash kodi yuboriladi.
+            ℹ️ Yangi hisob ochish yoki mavjud hisobga kirish uchun Gmailingizga 6 xonali tasdiqlash kodi yuboriladi.
           </div>
           <div style="margin-bottom: 14px; padding: 10px 12px; background: rgba(37,99,235,0.06); border: 1px solid rgba(37,99,235,0.18); border-radius: 10px; font-size: 12.5px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-            <span>💡 <strong>2-akaunt yoki tezkor profil uchun:</strong></span>
+            <span>🔑 <strong>Profilingizga parolingiz bormi?</strong></span>
             <button type="button" onclick="if(window.Auth&&Auth.openPasswordTab)Auth.openPasswordTab()" style="background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
-              Nik &amp; Parol ➔
+              Parol bilan kirish ➔
             </button>
           </div>
           <button class="btn-primary" id="auth-send-otp-btn">
@@ -246,14 +246,13 @@
           </button>
         </div>
 
-        <!-- Mode B: Quick Password Login & Direct Registration (for other person or multi-device login) -->
+        <!-- Mode B: Quick Password Login (for users with existing account & password) -->
         <div class="auth-form-card" id="auth-step-password-login" style="display: none;">
-          <div style="display: flex; gap: 8px; margin-bottom: 16px; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 10px;">
-            <button type="button" id="subtab-pwd-login" class="tab-btn active" style="flex: 1; padding: 8px; font-size: 13px;">Kirish</button>
-            <button type="button" id="subtab-pwd-register" class="tab-btn" style="flex: 1; padding: 8px; font-size: 13px;">Yangi hisob</button>
+          <div style="font-weight: 700; font-size: 15px; margin-bottom: 14px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <span>🔑</span>
+            <span>Mavjud hisobga parol bilan kirish</span>
           </div>
 
-          <!-- Submode 1: Login -->
           <div id="pwd-login-subcard">
             <div class="form-group">
               <label class="form-label">Nikingiz (@username) yoki Gmail manzilingiz</label>
@@ -281,37 +280,13 @@
               <span>Kirish</span>
               <span>➔</span>
             </button>
-          </div>
 
-          <!-- Submode 2: Direct Registration -->
-          <div id="pwd-register-subcard" style="display: none;">
-            <div class="form-group">
-              <label class="form-label">Ismingiz (Display Name)</label>
-              <input type="text" id="pwd-reg-name-input" class="form-input" placeholder="Masalan: Sardor" maxlength="50">
+            <div style="margin-top: 18px; text-align: center; padding-top: 14px; border-top: 1px solid var(--border);">
+              <span style="font-size: 13px; color: var(--text-muted);">Yangi hisob ochmoqchimisiz?</span>
+              <button type="button" onclick="if(window.Auth&&Auth.addNewAccount)Auth.addNewAccount()" style="background: none; border: none; color: var(--primary); font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: underline; margin-left: 4px;">
+                Gmail orqali yangi hisob ochish ➔
+              </button>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Nikingiz (@username)</label>
-              <div style="position: relative;">
-                <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
-                <input type="text" id="pwd-reg-username-input" class="form-input" style="padding-left: 32px;" placeholder="sardor_01" maxlength="25" autocomplete="off" autocapitalize="none">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Gmail manzilingiz (Ixtiyoriy, parolni tiklash uchun)</label>
-              <input type="email" id="pwd-reg-email-input" class="form-input" placeholder="misol@gmail.com">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Parol o'ylab toping (kamida 6 ta belgi)</label>
-              <input type="password" id="pwd-reg-password-input" class="form-input" placeholder="Yangi parol">
-            </div>
-
-            <button class="btn-primary" id="btn-register-with-password">
-              <span>Ro'yxatdan o'tish va Kirish</span>
-              <span>🎉</span>
-            </button>
           </div>
         </div>
 
@@ -557,8 +532,9 @@
           </div>
 
           <!-- Add / Connect another account -->
-          <button class="btn-secondary" id="btn-add-account" onclick="if(window.Auth&&Auth.addNewAccount)Auth.addNewAccount()" style="width: 100%; border: 1px dashed var(--primary); color: var(--primary); font-weight: 600;">
-            <span>➕ Boshqa profilga ulanish</span>
+          <button class="btn-secondary" id="btn-add-account" onclick="if(window.Auth&&Auth.addNewAccount)Auth.addNewAccount()" style="width: 100%; border: 1.5px dashed var(--primary); color: var(--primary); font-weight: 700; padding: 12px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>➕</span>
+            <span>Yangi hisob ochish (Yangi Gmail orqali)</span>
           </button>
         </div>
 

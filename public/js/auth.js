@@ -1334,7 +1334,7 @@ const Auth = (() => {
 
     App.showToast('Hisobdan chiqildi');
     App.switchToView('auth');
-    showStep('password');
+    showStep('email');
   }
 
   // Handle Complete Account Deletion (Frees up @username in SQLite DB)
@@ -1387,10 +1387,9 @@ const Auth = (() => {
 
         alert(`@${currentNik} niki bazadan butunlay o'chirildi va bo'shatildi!\nEndi xohlagan yangi odam ushbu nikni ro'yxatdan o'tkaza oladi.`);
         App.switchToView('auth');
-        showStep('password');
-
-        const subtabReg = document.getElementById('subtab-pwd-register');
-        if (subtabReg) subtabReg.click();
+        showStep('email');
+        const emailInput = document.getElementById('auth-email-input');
+        if (emailInput) emailInput.value = '';
       } else {
         App.showToast(data.message || 'Profilni o\'chirishda xatolik');
       }
@@ -1403,35 +1402,55 @@ const Auth = (() => {
     const modal = document.getElementById('profile-accounts-modal');
     if (modal) modal.classList.remove('open');
 
-    App.switchToView('auth');
-    showStep('password');
+    // Reset pending registration state so user enters a fresh new Gmail
+    pendingEmail = '';
+    sessionStorage.removeItem('wisdom_pending_email');
+    sessionStorage.removeItem('wisdom_pending_step');
+    localStorage.removeItem('wisdom_pending_email');
+    localStorage.removeItem('wisdom_pending_step');
 
-    const subtabReg = document.getElementById('subtab-pwd-register');
-    const subtabLogin = document.getElementById('subtab-pwd-login');
-    const loginSubcard = document.getElementById('pwd-login-subcard');
-    const regSubcard = document.getElementById('pwd-register-subcard');
-
-    if (subtabReg && subtabLogin && loginSubcard && regSubcard) {
-      subtabReg.classList.add('active');
-      subtabLogin.classList.remove('active');
-      loginSubcard.style.display = 'none';
-      regSubcard.style.display = 'block';
+    const emailInput = document.getElementById('auth-email-input');
+    if (emailInput) {
+      emailInput.value = '';
     }
+
+    // Reset OTP inputs
+    const digits = document.querySelectorAll('.otp-digit');
+    if (digits) {
+      digits.forEach(d => { d.value = ''; });
+    }
+
+    // Reset profile fields
+    const nameInput = document.getElementById('reg-name-input');
+    const userInput = document.getElementById('reg-username-input');
+    const pwdInput = document.getElementById('reg-password-input');
+    if (nameInput) nameInput.value = '';
+    if (userInput) userInput.value = '';
+    if (pwdInput) pwdInput.value = '';
+
+    App.switchToView('auth');
+    showStep('email');
+
+    const tabOtp = document.getElementById('tab-auth-mode-otp');
+    const tabPwd = document.getElementById('tab-auth-mode-pwd');
+    if (tabOtp && tabPwd) {
+      tabOtp.classList.add('active');
+      tabPwd.classList.remove('active');
+    }
+    const pwdLoginCard = document.getElementById('auth-step-password-login');
+    if (pwdLoginCard) pwdLoginCard.style.display = 'none';
+
+    setTimeout(() => {
+      if (emailInput) emailInput.focus();
+    }, 150);
+
+    App.showToast("Yangi hisob ochish uchun yangi Gmail manzilingizni kiriting");
   }
 
   function openPasswordTab() {
     showStep('password');
-    const subtabReg = document.getElementById('subtab-pwd-register');
-    const subtabLogin = document.getElementById('subtab-pwd-login');
-    const loginSubcard = document.getElementById('pwd-login-subcard');
-    const regSubcard = document.getElementById('pwd-register-subcard');
-
-    if (subtabReg && subtabLogin && loginSubcard && regSubcard) {
-      subtabReg.classList.add('active');
-      subtabLogin.classList.remove('active');
-      loginSubcard.style.display = 'none';
-      regSubcard.style.display = 'block';
-    }
+    const loginUser = document.getElementById('login-username-input');
+    if (loginUser) loginUser.focus();
   }
 
   async function checkAuthStatus() {
