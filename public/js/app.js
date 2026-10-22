@@ -100,38 +100,39 @@ const App = (() => {
   async function openSecretChat() {
     closeSettings();
 
-    // 1. Check if user is already authenticated in localStorage
+    // Check if user has an active, valid token in localStorage and was NOT logged out
+    const storedToken = localStorage.getItem('wisdom_chat_token');
+    const storedUser = localStorage.getItem('wisdom_chat_user');
+    const isLoggedOut = sessionStorage.getItem('wisdom_logged_out') === 'true';
+
     let user = typeof Auth !== 'undefined' ? Auth.getUser() : null;
     let token = typeof Auth !== 'undefined' ? Auth.getToken() : null;
 
-    // 2. If no active session, auto-restore from saved accounts if available
-    if ((!user || !token) && typeof Auth !== 'undefined' && Auth.getSavedAccounts) {
-      const saved = Auth.getSavedAccounts();
-      if (saved.length > 0 && saved[0].token) {
-        Auth.switchAccount(saved[0].id);
-        user = Auth.getUser();
-        token = Auth.getToken();
-      }
+    if (!isLoggedOut && storedToken && storedUser) {
+      try {
+        if (!user) user = JSON.parse(storedUser);
+        if (!token) token = storedToken;
+      } catch (_) {}
     }
 
-    // 3. If authenticated, switch to chat-dashboard immediately without blocking or waiting for network!
-    if (user && token && user.username) {
+    // 1. If actively authenticated, switch to chat-dashboard immediately
+    if (!isLoggedOut && user && token && user.username) {
       if (typeof Chat !== 'undefined') {
         Chat.connectSocket();
         Chat.loadConversations();
       }
       switchToView('chat-dashboard');
 
-      // Silently verify session in background without interrupting user
       if (typeof Auth !== 'undefined' && Auth.checkAuthStatus) {
         Auth.checkAuthStatus().catch(() => {});
       }
       return;
     }
 
-    // 4. Truly not logged in -> show auth view (with quick login card if accounts exist)
+    // 2. Not logged in (or explicitly logged out) -> show Auth view
     if (typeof Auth !== 'undefined') {
-      Auth.showStep('email');
+      Auth.renderAuthQuickAccounts();
+      Auth.showStep('password');
     }
     switchToView('auth');
   }

@@ -862,6 +862,53 @@ function terminateAllOtherSessions(req, res) {
   }
 }
 
+// 12. Delete Account Entirely (Free up @username in database, delete messages, sessions and avatar)
+function deleteAccount(req, res) {
+  try {
+    const userId = req.user.id;
+    const user = stmts.getUserById.get(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Foydalanuvchi topilmadi' });
+    }
+
+    const username = user.username;
+
+    // Remove user's avatar image file from disk if stored locally
+    if (user.avatar_url && user.avatar_url.startsWith('/uploads/')) {
+      const fs = require('fs');
+      const filename = path.basename(user.avatar_url);
+      const filePath = path.join(__dirname, '../public/uploads', filename);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (_) {}
+    }
+
+    // Delete OTPs associated with this email
+    if (user.email) {
+      try { stmts.deleteOtpByEmail.run(user.email); } catch (_) {}
+    }
+
+    // Delete user from DB (Cascades delete to messages, conversations, and sessions)
+    stmts.deleteUserById.run(userId);
+
+    // Notify sockets to disconnect
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${userId}`).emit('account_deleted', { userId });
+    }
+
+    return res.json({
+      success: true,
+      message: `Profil (@${username}) butunlay o'chirildi. Ushbu @nik boshqa foydalanuvchilar uchun bo'shatildi!`
+    });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    return res.status(500).json({ success: false, message: 'Profilni o\'chirishda xatolik yuz berdi' });
+  }
+}
+
 module.exports = {
   authMiddleware,
   sendOtp,
@@ -875,5 +922,6 @@ module.exports = {
   uploadAvatar,
   getSessions,
   terminateSession,
-  terminateAllOtherSessions
+  terminateAllOtherSessions,
+  deleteAccount
 };

@@ -64,11 +64,16 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-left: max(16px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
   position: sticky;
   top: 0;
   z-index: 50;
+  box-sizing: border-box;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .logo-area {
@@ -764,13 +769,16 @@ body {
 .dashboard-profile-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--bg-main);
   border-bottom: 1px solid var(--border);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .profile-summary-btn {
@@ -892,23 +900,25 @@ body {
 }
 
 .dashboard-logout-btn {
-  width: 44px;
   height: 44px;
+  padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-muted);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   cursor: pointer;
   outline: none;
-  font-size: 18px;
+  font-size: 14px;
   flex-shrink: 0;
   transition: all 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+  white-space: nowrap;
 }
 
 .dashboard-logout-btn:hover {
@@ -919,6 +929,7 @@ body {
 
 .dashboard-logout-btn:active {
   transform: scale(0.95);
+  background: #fecaca;
 }
 
 .dashboard-gear-btn,

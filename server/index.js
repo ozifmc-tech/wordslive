@@ -19,7 +19,8 @@ const {
   uploadAvatar,
   getSessions,
   terminateSession,
-  terminateAllOtherSessions
+  terminateAllOtherSessions,
+  deleteAccount
 } = require('./authController');
 
 const { 
@@ -150,6 +151,10 @@ app.post('/api/auth/register-with-password', registerRateLimiter, registerWithPa
 app.get('/api/auth/sessions', authMiddleware, getSessions);
 app.post('/api/auth/sessions/terminate/:id', authMiddleware, terminateSession);
 app.post('/api/auth/sessions/terminate-all', authMiddleware, terminateAllOtherSessions);
+
+// Delete Account Entirely (Frees up @username in DB)
+app.delete('/api/auth/account', authMiddleware, deleteAccount);
+app.post('/api/auth/delete-account', authMiddleware, deleteAccount);
 
 // -------------------------------------------------------------
 // CHAT & MESSAGING ROUTES (PROTECTED)

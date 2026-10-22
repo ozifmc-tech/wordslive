@@ -961,11 +961,21 @@ const Auth = (() => {
     renderAuthQuickAccounts();
   }
 
+  function removeAccountFromStorage(userId) {
+    if (!userId) return;
+    let accounts = getSavedAccounts();
+    accounts = accounts.filter(a => a.id !== userId);
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    renderSavedAccounts();
+    renderAuthQuickAccounts();
+  }
+
   function switchAccount(userId) {
     const accounts = getSavedAccounts();
     const target = accounts.find(a => a.id === userId);
     if (!target) return;
 
+    sessionStorage.removeItem('wisdom_logged_out');
     token = target.token;
     currentUser = target;
     localStorage.setItem('wisdom_chat_token', target.token);
@@ -989,7 +999,7 @@ const Auth = (() => {
 
     const accounts = getSavedAccounts();
     if (accounts.length === 0) {
-      container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Hozircha faqat bitta hisob ulangan</div>';
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Hozircha ulangan boshqa hisoblar yo\'q</div>';
       return;
     }
 
@@ -1002,7 +1012,7 @@ const Auth = (() => {
         : avatarLetter;
 
       return `
-        <div class="saved-account-row ${isActive ? 'active' : ''}" onclick="Auth.switchAccount(${acc.id})">
+        <div class="saved-account-row ${isActive ? 'active' : ''}" onclick="Auth.switchAccount(${acc.id})" style="cursor:pointer;">
           <div style="display:flex; align-items:center; gap:10px;">
             <div class="user-avatar" style="width:34px; height:34px; font-size:13px; position:relative; background-color:${acc.avatarColor || '#2563eb'};">
               ${avatarContent}
@@ -1012,8 +1022,9 @@ const Auth = (() => {
               <div style="font-size:11.5px; color:var(--text-muted);">@${acc.username}</div>
             </div>
           </div>
-          <div>
-            ${isActive ? '<span style="font-size:11px; font-weight:700; color:var(--primary);">Faol ✓</span>' : '<span style="font-size:12px; color:var(--text-muted);">O\'tish ➔</span>'}
+          <div style="display:flex; align-items:center; gap:8px;">
+            ${isActive ? '<span style="font-size:11px; font-weight:700; color:var(--primary);">Faol ✓</span>' : '<span style="font-size:12px; color:var(--primary); font-weight:600;">O\'tish ➔</span>'}
+            ${!isActive ? `<button type="button" onclick="event.stopPropagation(); Auth.removeSavedAccount(${acc.id})" style="background:rgba(239,68,68,0.1); border:none; color:#ef4444; width:26px; height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; cursor:pointer;" title="Qurilmadan olib tashlash">✕</button>` : ''}
           </div>
         </div>
       `;
@@ -1047,14 +1058,19 @@ const Auth = (() => {
               ${avatarHtml}
             </div>
             <div>
-              <div style="font-weight:700; font-size:13.5px; color:var(--text);">${acc.displayName}</div>
+              <div style="font-weight:700; font-size:13.5px; color:var(--text-main);">${acc.displayName}</div>
               <div style="font-size:12px; color:var(--text-muted);">@${acc.username}</div>
             </div>
           </div>
-          <button type="button" class="btn-primary" style="padding:6px 14px; font-size:12.5px; border-radius:8px; width:auto; margin:0;" onclick="Auth.quickLoginAccount(${acc.id})">
-            <span>Kirish</span>
-            <span>➔</span>
-          </button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button type="button" class="btn-primary" style="padding:6px 14px; font-size:12.5px; border-radius:8px; width:auto; margin:0;" onclick="Auth.quickLoginAccount(${acc.id})">
+              <span>Kirish</span>
+              <span>➔</span>
+            </button>
+            <button type="button" onclick="event.stopPropagation(); Auth.removeSavedAccount(${acc.id})" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); color:#ef4444; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer;" title="Qurilmadan olib tashlash">
+              ✕
+            </button>
+          </div>
         </div>
       `;
     }).join('');
@@ -1065,6 +1081,7 @@ const Auth = (() => {
     const target = accounts.find(a => a.id === userId);
     if (!target) return;
 
+    sessionStorage.removeItem('wisdom_logged_out');
     token = target.token;
     currentUser = target;
     localStorage.setItem('wisdom_chat_token', target.token);
@@ -1235,29 +1252,152 @@ const Auth = (() => {
     renderAuthQuickAccounts();
   }
 
-  function handleLogout() {
+  // Handle Logout (Clear active session, close modals, switch to Auth screen)
+  function handleLogout(options = {}) {
+    const { removeFromDevice = false } = options;
+
+    if (typeof Chat !== 'undefined' && Chat.disconnectSocket) {
+      Chat.disconnectSocket();
+    }
+
+    const currentId = currentUser ? currentUser.id : null;
+    if (removeFromDevice && currentId) {
+      removeAccountFromStorage(currentId);
+    }
+
+    // Flag explicit logout so app DOES NOT auto-login back in
+    sessionStorage.setItem('wisdom_logged_out', 'true');
+    sessionStorage.removeItem('wisdom_active_view');
+
     token = null;
     currentUser = null;
     localStorage.removeItem('wisdom_chat_token');
     localStorage.removeItem('wisdom_chat_user');
+
+    const modal = document.getElementById('profile-accounts-modal');
+    if (modal) modal.classList.remove('open');
+
     updateProfileBarUI();
     renderAuthQuickAccounts();
+
     App.showToast('Hisobdan chiqildi');
-    App.switchToView('dictionary');
+    App.switchToView('auth');
+    showStep('password');
+  }
+
+  // Handle Complete Account Deletion (Frees up @username in SQLite DB)
+  async function handleDeleteAccount() {
+    if (!currentUser || !token) {
+      App.showToast('Iltimos, avval tizimga kiring');
+      return;
+    }
+
+    const currentNik = currentUser.username;
+    const confirmText = `DIQQAT!\n\n@${currentNik} profilingizni bazadan BUTUNLAY O'CHIRMOQCHIMISIZ?\n\n• Barcha yozishmalaringiz va yuborilgan fayllar o'chiriladi.\n• Ushbu @${currentNik} niki bazada darhol BO'SHAYDI va yangi foydalanuvchilar uni qayta olishi mumkin bo'ladi!\n\nO'chirishni tasdiqlaysizmi?`;
+
+    if (!confirm(confirmText)) {
+      return;
+    }
+
+    const activeToken = token;
+    const activeUserId = currentUser.id;
+
+    try {
+      App.showToast('Profil o\'chirilmoqda...');
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${activeToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (typeof Chat !== 'undefined' && Chat.disconnectSocket) {
+          Chat.disconnectSocket();
+        }
+
+        removeAccountFromStorage(activeUserId);
+        sessionStorage.setItem('wisdom_logged_out', 'true');
+        sessionStorage.removeItem('wisdom_active_view');
+
+        token = null;
+        currentUser = null;
+        localStorage.removeItem('wisdom_chat_token');
+        localStorage.removeItem('wisdom_chat_user');
+
+        const modal = document.getElementById('profile-accounts-modal');
+        if (modal) modal.classList.remove('open');
+
+        updateProfileBarUI();
+        renderAuthQuickAccounts();
+
+        alert(`@${currentNik} niki bazadan butunlay o'chirildi va bo'shatildi!\nEndi xohlagan yangi odam ushbu nikni ro'yxatdan o'tkaza oladi.`);
+        App.switchToView('auth');
+        showStep('password');
+
+        const subtabReg = document.getElementById('subtab-pwd-register');
+        if (subtabReg) subtabReg.click();
+      } else {
+        App.showToast(data.message || 'Profilni o\'chirishda xatolik');
+      }
+    } catch (err) {
+      App.showToast('Server bilan aloqa uzildi');
+    }
+  }
+
+  function addNewAccount() {
+    const modal = document.getElementById('profile-accounts-modal');
+    if (modal) modal.classList.remove('open');
+
+    App.switchToView('auth');
+    showStep('password');
+
+    const subtabReg = document.getElementById('subtab-pwd-register');
+    const subtabLogin = document.getElementById('subtab-pwd-login');
+    const loginSubcard = document.getElementById('pwd-login-subcard');
+    const regSubcard = document.getElementById('pwd-register-subcard');
+
+    if (subtabReg && subtabLogin && loginSubcard && regSubcard) {
+      subtabReg.classList.add('active');
+      subtabLogin.classList.remove('active');
+      loginSubcard.style.display = 'none';
+      regSubcard.style.display = 'block';
+    }
+  }
+
+  function openPasswordTab() {
+    showStep('password');
+    const subtabReg = document.getElementById('subtab-pwd-register');
+    const subtabLogin = document.getElementById('subtab-pwd-login');
+    const loginSubcard = document.getElementById('pwd-login-subcard');
+    const regSubcard = document.getElementById('pwd-register-subcard');
+
+    if (subtabReg && subtabLogin && loginSubcard && regSubcard) {
+      subtabReg.classList.add('active');
+      subtabLogin.classList.remove('active');
+      loginSubcard.style.display = 'none';
+      regSubcard.style.display = 'block';
+    }
   }
 
   async function checkAuthStatus() {
+    // If user has explicitly logged out, do not auto-authenticate
+    if (sessionStorage.getItem('wisdom_logged_out') === 'true') {
+      return false;
+    }
+
     if (!token) {
-      const accounts = getSavedAccounts();
-      if (accounts.length > 0 && accounts[0].token) {
-        token = accounts[0].token;
-        currentUser = accounts[0];
-        localStorage.setItem('wisdom_chat_token', token);
-        localStorage.setItem('wisdom_chat_user', JSON.stringify(currentUser));
-        updateProfileBarUI();
-      } else {
-        return false;
+      token = localStorage.getItem('wisdom_chat_token');
+      const rawUser = localStorage.getItem('wisdom_chat_user');
+      if (rawUser && !currentUser) {
+        try { currentUser = JSON.parse(rawUser); } catch (_) {}
       }
+    }
+
+    if (!token) {
+      return false;
     }
 
     try {
@@ -1589,11 +1729,14 @@ const Auth = (() => {
     openSessionsModal,
     closeSessionsModal,
     handleSaveProfile,
-    addNewAccount: () => {
-      const modal = document.getElementById('profile-accounts-modal');
-      if (modal) modal.classList.remove('open');
-      showStep('email');
-      if (typeof App !== 'undefined' && App.switchToView) App.switchToView('auth');
+    handleDeleteAccount,
+    addNewAccount,
+    openPasswordTab,
+    removeSavedAccount: (id) => {
+      if (confirm("Ushbu hisobni qurilmangizdagi tezkor kirish ro'yxatidan olib tashlamoqchimisiz?")) {
+        removeAccountFromStorage(id);
+        App.showToast("Hisob olib tashlandi");
+      }
     },
     copyUsername: () => {
       const un = currentUser ? currentUser.username : '';

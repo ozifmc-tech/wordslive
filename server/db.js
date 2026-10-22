@@ -156,6 +156,9 @@ const stmts = {
     UPDATE users SET avatar_url = ? WHERE id = ?
   `),
 
+  deleteUserById: db.prepare('DELETE FROM users WHERE id = ?'),
+  deleteOtpByEmail: db.prepare('DELETE FROM otp_codes WHERE LOWER(email) = LOWER(?)'),
+
   searchUsers: db.prepare(`
     SELECT id, email, username, display_name, avatar_color, avatar_url, bio, is_online, last_seen
     FROM users 
