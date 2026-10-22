@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WordsLive - Lug'at &amp; Jonli Muloqot</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="stylesheet" href="/css/style.css?v=2.8.3">
+  <script>
+    // WordsLive Universal Server URL Detector (works seamlessly on Web, PWA, and Android APK)
+    (function() {
+      const DEFAULT_REMOTE = 'https://steven-leslie-sensor-accurate.trycloudflare.com';
+      function getBase() {
+        const custom = localStorage.getItem('wordslive_server_url');
+        if (custom) return custom.replace(/\/+$/, '');
+        const proto = window.location.protocol;
+        const host = window.location.hostname;
+        const port = window.location.port;
+        // In Android WebView / Capacitor / Cordova / file protocol or pure local port 80/empty
+        if (proto === 'capacitor:' || proto === 'file:' || (host === 'localhost' && (!port || port === '80'))) {
+          return DEFAULT_REMOTE;
+        }
+        return window.location.origin;
+      }
+      window.API_BASE_URL = getBase();
+
+      // Automatically route all relative /api/ and /uploads/ requests to API_BASE_URL
+      const rawFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        if (typeof url === 'string') {
+          if (url.startsWith('/api/') || url.startsWith('/uploads/')) {
+            url = window.API_BASE_URL + url;
+          }
+        }
+        return rawFetch.call(this, url, opts);
+      };
+
+      // Ensure any stale service worker caches from previous versions are completely evicted
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) regs[i].unregister();
+        }).catch(function() {});
+      }
+    })();
+  </script>
+  <script src="/js/socket.io.min.js"></script>
+</head>
+<body>
+
+  <div id="app-container">
+
+    <!-- Top Sticky Header -->
+    <header class="app-header">
+      <div class="logo-area" id="header-logo" style="cursor: pointer;">
+        <div class="logo-icon">W</div>
+        <span>WordsLive</span>
+      </div>
+
+      <div class="header-actions">
+        <!-- Emergency Panic Button (Shown when in Secret Chat) -->
+        <button id="panic-btn" class="panic-btn" style="display: none;" title="Zudlik bilan lug'atga qaytish">
+          <span>📕</span>
+          <span>Lug'at</span>
+        </button>
+
+        <!-- Settings Gear Icon -->
+        <button id="open-settings-btn" class="icon-btn" onclick="if(window.App&&App.openSettings){App.openSettings(event);}else{const m=document.getElementById('settings-modal');if(m)m.classList.add('open');}" title="Sozlamalar">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- ======================================================= -->
+    <!-- VIEW 1: AUTHENTIC ENGLISH-UZBEK DICTIONARY (COVER)     -->
+    <!-- ======================================================= -->
+    <main id="view-dictionary" class="view-panel active">
+      <!-- Search Bar -->
+      <section class="dict-search-bar">
+        <!-- Inglizcha-O'zbekcha yo'nalish tugmalari -->
+        <div class="lang-switcher-bar">
+          <button class="lang-mode-btn active" data-lang="all">Barchasi (EN ⇄ UZ)</button>
+          <button class="lang-mode-btn" data-lang="en-uz">🇬🇧 EN ➔ 🇺🇿 UZ</button>
+          <button class="lang-mode-btn" data-lang="uz-en">🇺🇿 UZ ➔ 🇬🇧 EN</button>
+        </div>
+
+        <div class="search-input-wrap">
+          <span class="search-prefix-icon">🔍</span>
+          <input type="text" id="dict-search-input" class="search-input" placeholder="So'z yozishni boshlang (masalan: app, scho, kitob)..." autocomplete="off" autocorrect="off" autocapitalize="off">
+          <button id="dict-search-clear" class="search-clear-btn">✕</button>
+        </div>
+
+        <!-- Yozayotganda chiqadigan tezkor tavsiyalar (Predictive Suggestions) -->
+        <div id="search-suggestions-box" class="search-suggestions-box"></div>
+      </section>
+
+      <section class="dict-content">
+        <!-- Word of the Day -->
+        <div class="wotd-card" id="wotd-card">
+          <div class="wotd-badge">✨ Kun so'zi</div>
+          <div class="wotd-header">
+            <div>
+              <div class="wotd-word" id="wotd-word">wisdom</div>
+              <div class="wotd-ipa" id="wotd-ipa">/ˈwɪz.dəm/</div>
+            </div>
+            <button class="audio-btn" id="wotd-audio-btn" title="Talaffuzni tinglash">🔊</button>
+          </div>
+          <div class="wotd-trans" id="wotd-trans">donolik, hikmat, aql-zakovat</div>
+          <div class="wotd-def" id="wotd-def">The quality of having experience, knowledge, and good judgment.</div>
+          <div class="wotd-example" id="wotd-example">Wisdom comes not from age, but from learning and reflection.</div>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="category-pills">
+          <button class="pill-btn active" data-category="all">Barchasi</button>
+          <button class="pill-btn" data-category="noun">Otlar (Noun)</button>
+          <button class="pill-btn" data-category="verb">Fe'llar (Verb)</button>
+          <button class="pill-btn" data-category="adjective">Sifatlar (Adj)</button>
+        </div>
+
+        <!-- Dictionary Word Results List -->
+        <div class="word-list" id="dict-word-list">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================= -->
+    <!-- VIEW 2: AUTHENTICATION / GMAIL & OTP & PASSWORD (SECRET)-->
+    <!-- ======================================================= -->
+    <main id="view-auth" class="view-panel">
+      <div class="auth-panel">
+        <div class="auth-header-card">
+          <div class="auth-logo-badge">💬</div>
+          <h2 class="auth-title" id="auth-main-title">Muloqot tizimiga ulanish</h2>
+          <p class="auth-subtitle" id="auth-main-subtitle">Shaxsiy hisobingizga kirish usulini tanlang</p>
+        </div>
+
+        <!-- Quick Re-Login Card (If an account is already linked / saved on this device) -->
+        <div id="auth-saved-accounts-box" style="display: none; width: 100%; max-width: 440px; margin-bottom: 16px;">
+          <div style="background: var(--bg-card); border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+              <span>⚡ Ulangan hisobingiz</span>
+              <span style="font-size: 11px; background: rgba(37,99,235,0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">1 bosishda kirish</span>
+            </div>
+            <div id="auth-saved-accounts-list"></div>
+          </div>
+        </div>
+
+        <!-- Auth Method Selector Tabs -->
+        <div class="chat-sub-nav" style="margin-bottom: 16px; width: 100%; max-width: 440px;">
+          <div class="sub-nav-item active" id="tab-auth-mode-otp" style="font-size: 13px;">📧 Gmail OTP</div>
+          <div class="sub-nav-item" id="tab-auth-mode-pwd" style="font-size: 13px;">🔑 Nik & Parol orqali</div>
+        </div>
+
+        <!-- Mode A, Step 1: Gmail Input -->
+        <div class="auth-form-card" id="auth-step-email">
+          <div class="form-group">
+            <label class="form-label">Gmail manzilingiz</label>
+            <input type="email" id="auth-email-input" class="form-input" placeholder="misol@gmail.com" autocomplete="email">
+          </div>
+          <div class="info-alert">
+            ℹ️ Hisobingiz xavfsizligini ta'minlash uchun Gmailingizga 6 xonali tasdiqlash kodi yuboriladi.
+          </div>
+          <button class="btn-primary" id="auth-send-otp-btn">
+            <span>Kodni yuborish</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+        <!-- Mode A, Step 2: OTP Verification -->
+        <div class="auth-form-card" id="auth-step-otp" style="display: none;">
+          <div id="dev-code-alert" class="dev-code-banner" style="display: none;"></div>
+          <div class="form-group">
+            <label class="form-label">Gmailingizga yuborilgan 6 xonali kod</label>
+            <div class="otp-inputs">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="0">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="1">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="2">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="3">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="4">
+              <input type="tel" maxlength="1" class="otp-digit" data-idx="5">
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+            <span id="otp-timer-text" style="color: var(--text-muted);">Qolgan vaqt: 10:00</span>
+            <button id="otp-resend-btn" style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer;">Qayta yuborish</button>
+          </div>
+          <button class="btn-primary" id="auth-verify-otp-btn">
+            <span>Kodni tasdiqlash</span>
+            <span>✓</span>
+          </button>
+          <button class="btn-secondary" id="auth-back-to-email-btn">Emailni o'zgartirish</button>
+        </div>
+
+        <!-- Mode A, Step 3: Profile Registration (Ism & Noyob Nik) -->
+        <div class="auth-form-card" id="auth-step-profile" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Ismingiz (Display Name)</label>
+            <input type="text" id="reg-name-input" class="form-input" placeholder="Masalan: Laylo" maxlength="50">
+            <small style="color: var(--text-muted); font-size: 11.5px;">Ismlar bir xil bo'lishi mumkin</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nikingiz (Noyob Username)</label>
+            <div style="position: relative;">
+              <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
+              <input type="text" id="reg-username-input" class="form-input" style="padding-left: 32px;" placeholder="laylo_01" maxlength="25" autocomplete="off" autocapitalize="none">
+            </div>
+            <div id="username-check-status" style="font-size: 12px; margin-top: 4px;"></div>
+          </div>
+
+          <button class="btn-primary" id="auth-complete-reg-btn">
+            <span>Akkauntni yaratish va Kirish</span>
+            <span>🎉</span>
+          </button>
+        </div>
+
+        <!-- Mode B: Quick Password Login (for other person or multi-device login) -->
+        <div class="auth-form-card" id="auth-step-password-login" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Nikingiz (@username)</label>
+            <div style="position: relative;">
+              <span style="position: absolute; left: 14px; top: 13px; color: var(--text-muted); font-weight: 700;">@</span>
+              <input type="text" id="login-username-input" class="form-input" style="padding-left: 32px;" placeholder="baxtiyor" autocomplete="off" autocapitalize="none">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Profil paroli</label>
+            <div style="position: relative;">
+              <input type="password" id="login-password-input" class="form-input" placeholder="Parolingizni kiriting">
+              <button type="button" id="btn-toggle-login-pwd" style="position: absolute; right: 10px; top: 12px; background: none; border: none; font-size: 16px; cursor: pointer;">👁️</button>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="btn-login-with-password">
+            <span>Kirish</span>
+            <span>➔</span>
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ======================================================= -->
+    <!-- VIEW 3: CHAT DASHBOARD (SUHBATLAR & QIDIRUV)            -->
+    <!-- ======================================================= -->
+    <main id="view-chat-dashboard" class="view-panel">
+      <!-- Interactive Profile Card Button -->
+      <div class="dashboard-profile-header">
+        <button type="button" id="my-profile-btn" class="profile-summary-btn" onclick="if(window.Auth&&Auth.openProfileModal)Auth.openProfileModal()" title="Profil sozlamalari, parollar va hisoblarni boshqarish">
+          <div class="profile-btn-left">
+            <div id="my-profile-avatar" class="user-avatar profile-avatar-round">B</div>
+            <div class="profile-text-group">
+              <div class="profile-primary-row">
+                <span id="my-profile-name" class="profile-user-name">Baxtiyor</span>
+                <span class="profile-settings-pill">⚙️ Sozlash</span>
+              </div>
+              <div id="my-profile-nik" class="profile-user-nik">@baxtiyor</div>
+            </div>
+          </div>
+          <div class="profile-btn-chevron">
+            <span class="chevron-arrow">›</span>
+          </div>
+        </button>
+        <button type="button" id="open-profile-btn" class="dashboard-gear-btn" onclick="if(window.Auth&&Auth.openProfileModal)Auth.openProfileModal()" title="Profil sozlamalari, parollar va hisoblarni boshqarish">
+          <span>⚙️</span>
+        </button>
+        <button type="button" id="logout-btn" class="dashboard-logout-btn" onclick="if(window.Auth&&Auth.logout)Auth.logout()" title="Chiqish">
+          <span>🚪</span>
+        </button>
+      </div>
+
+      <!-- Navigation Segmented Button Bar -->
+      <div class="dashboard-tabs-bar" id="dashboard-sub-nav" role="tablist">
+        <button type="button" class="tab-pill-btn sub-nav-item active" id="tab-btn-conversations" data-tab="tab-conversations" onclick="if(window.Chat&&Chat.switchDashboardTab)Chat.switchDashboardTab('tab-conversations')" role="tab" aria-selected="true">
+          <span class="tab-btn-icon">💬</span>
+          <span class="tab-btn-text">Suhbatlar</span>
+        </button>
+        <button type="button" class="tab-pill-btn sub-nav-item" id="tab-btn-search" data-tab="tab-search" onclick="if(window.Chat&&Chat.switchDashboardTab)Chat.switchDashboardTab('tab-search')" role="tab" aria-selected="false">
+          <span class="tab-btn-icon">🔍</span>
+          <span class="tab-btn-text">Nik orqali qidirish</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: Conversations List -->
+      <div id="tab-conversations" class="conversations-scroll">
+        <div id="conversations-list-container">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Tab 2: Search Users by @nik -->
+      <div id="tab-search" class="conversations-scroll" style="display: none; padding: 16px;">
+        <div class="search-input-wrap" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <div style="position: relative; flex: 1;">
+            <span class="search-prefix-icon" style="position: absolute; left: 14px; top: 12px; color: var(--primary); font-weight: 700; font-size: 15px;">@</span>
+            <input type="text" id="user-search-input" class="search-input" style="padding-left: 34px;" placeholder="Nik kiriting (masalan: baxtiyor)..." autocomplete="off" autocapitalize="none">
+          </div>
+          <button id="user-search-submit-btn" class="btn-primary" style="padding: 0 16px; border-radius: var(--radius-full); font-size: 13.5px; font-weight: 600; white-space: nowrap; height: 44px; display: flex; align-items: center; gap: 6px;">
+            <span>🔍</span>
+            <span>Qidirish</span>
+          </button>
+        </div>
+        <div id="user-search-results">
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <div class="empty-text">Muloqot qilish uchun do'stingizning nikini (@nik) kiriting va qidiring</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ======================================================= -->
+    <!-- VIEW 4: ACTIVE CHAT ROOM (REAL-TIME DIALOG)            -->
+    <!-- ======================================================= -->
+    <main id="view-chat-room" class="view-panel">
+      <!-- Chat Header -->
+      <div class="chat-room-header">
+        <div class="chat-partner-info">
+          <button id="chat-back-btn" class="icon-btn" onclick="if(window.Chat&&Chat.goBackToDashboard)Chat.goBackToDashboard()" style="margin-left: -6px;">⬅️</button>
+          <div id="partner-avatar" class="chat-partner-avatar">P</div>
+          <div class="chat-partner-names">
+            <div id="partner-display-name" class="chat-partner-name">Partner</div>
+            <div id="partner-status-text" class="chat-partner-status">oxirgi marta yaqinda ko'rilgan</div>
+          </div>
+        </div>
+
+        <button id="chat-panic-btn" class="panic-btn" onclick="if(window.App&&App.resetToDictionary)App.resetToDictionary()" title="Tezda lug'atga o'tish">
+          <span>📕</span>
+          <span>Lug'at</span>
+        </button>
+      </div>
+
+      <!-- Messages Stream -->
+      <div class="messages-container" id="messages-container">
+        <!-- Messages appended here -->
+      </div>
+
+      <!-- Uploading progress banner -->
+      <div id="media-upload-progress" class="upload-progress-banner" style="display: none;">
+        <div class="spinner"></div>
+        <span id="upload-progress-text">Fayl yuklanmoqda (0%)...</span>
+      </div>
+
+      <!-- Message Input Bar with Gallery & Live Camera Buttons -->
+      <!-- Message Input Bar with Gallery, Camera & Voice Record Buttons -->
+      <div class="chat-input-bar" id="chat-normal-input-bar">
+        <!-- Hidden file inputs -->
+        <!-- Dedicated Gallery input (photos & videos up to 200MB) -->
+        <input type="file" id="media-gallery-input" accept="image/*,video/*" style="display: none;">
+        <!-- Dedicated Document / Any File input (PDF, DOC, ZIP, APK, etc. up to 200MB) -->
+        <input type="file" id="media-doc-input" style="display: none;">
+        <!-- Dedicated Pure Camera Photo input (forces native camera photo mode, zero gallery) -->
+        <input type="file" id="media-camera-photo-input" accept="image/*" capture="environment" style="display: none;">
+        <!-- Dedicated Pure Camera Video input (forces native camcorder video mode, zero gallery) -->
+        <input type="file" id="media-camera-video-input" accept="video/*" capture="camcorder" style="display: none;">
+
+        <button id="btn-open-gallery" class="icon-btn" onclick="if(window.Chat&&Chat.triggerGalleryUpload)Chat.triggerGalleryUpload()" title="Galereyadan rasm yoki video (200MB gacha)" style="color: var(--primary); font-size: 20px; padding: 6px;">
+          📎
+        </button>
+        <button id="btn-open-file" class="icon-btn" onclick="if(window.Chat&&Chat.triggerDocumentUpload)Chat.triggerDocumentUpload()" title="Fayl yoki hujjat yuborish (PDF, Word, Zip, APK, 200MB gacha)" style="color: #8b5cf6; font-size: 20px; padding: 6px;">
+          📁
+        </button>
+        <button id="btn-open-camera" class="icon-btn" onclick="if(window.Chat&&Chat.openCameraActionSheet)Chat.openCameraActionSheet()" title="Kameraga olish (Foto/Video)" style="color: #ef4444; font-size: 20px; padding: 6px;">
+          📷
+        </button>
+        <button id="btn-voice-record" class="icon-btn" title="Ovozli xabar yozish" style="color: #10b981; font-size: 20px; padding: 6px;">
+          🎙️
+        </button>
+
+        <textarea id="message-input" class="chat-input" placeholder="Xabar yozing..." rows="1"></textarea>
+        <button id="send-msg-btn" class="send-btn" title="Yuborish">➤</button>
+      </div>
+
+      <!-- Live Voice Recording Bar (Active during recording) -->
+      <div class="chat-input-bar voice-recording-bar" id="chat-voice-recording-bar" style="display: none; background: rgba(16, 185, 129, 0.08); border-top: 1.5px solid #10b981;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+          <div class="recording-pulse-dot"></div>
+          <span style="font-size: 13px; font-weight: 700; color: #10b981;">Ovoz yozilmoqda:</span>
+          <span id="voice-recording-timer" style="font-size: 14px; font-weight: 700; color: var(--text-main); font-family: monospace;">00:00</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="btn-cancel-voice-record" class="btn-secondary" style="padding: 6px 12px; font-size: 12px; border-radius: var(--radius-full); color: #ef4444; border-color: #ef4444;">
+            ✕ Bekor qilish
+          </button>
+          <button id="btn-send-voice-record" class="btn-primary" style="padding: 6px 14px; font-size: 13px; border-radius: var(--radius-full); background: #10b981; display: flex; align-items: center; gap: 4px;">
+            <span>Yuborish</span>
+            <span>➤</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- PROFILE & ACCOUNTS MODAL (MULTI-ACCOUNT & PASSWORD)     -->
+  <!-- ======================================================= -->
+  <div class="modal-overlay" id="profile-accounts-modal" onclick="if(event.target===this){if(window.Auth&&Auth.closeProfileModal){Auth.closeProfileModal();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet" style="max-height: 85vh; overflow-y: auto;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <span>Profil va Hisoblar</span>
+        <button id="close-profile-modal-btn" class="icon-btn" onclick="if(window.Auth&&Auth.closeProfileModal){Auth.closeProfileModal();}else{const m=document.getElementById('profile-accounts-modal');if(m)m.classList.remove('open');}" style="font-size: 16px;">✕</button>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- 1. Profile Edit Card -->
+        <div class="settings-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px;">
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <span>👤 Shaxsiy Profil</span>
+            <span id="profile-active-badge" style="font-size: 11px; background: rgba(37,99,235,0.1); color: var(--primary); padding: 2px 8px; border-radius: 10px; font-weight: 600;">Faol hisob</span>
+          </div>
+
+          <!-- Avatar Picture Area (Photo Upload & Display) -->
+          <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;">
+            <div style="position: relative; width: 84px; height: 84px; cursor: pointer;" id="prof-avatar-wrap">
+              <div id="prof-avatar-preview" class="user-avatar" style="width: 84px; height: 84px; font-size: 32px; border-radius: 50%; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; background-color: var(--primary); position: relative;">
+                U
+              </div>
+              <button type="button" id="btn-trigger-avatar-upload" style="position: absolute; bottom: 0; right: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; border: 2px solid var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer;" title="Rasm yuklash">
+                📷
+              </button>
+              <input type="file" id="profile-avatar-file-input" accept="image/*" style="display: none;">
+            </div>
+            <div id="prof-avatar-hint" style="font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 6px; cursor: pointer;">
+              📷 Rasm o'rnatish / O'zgartirish
+            </div>
+            <div id="prof-avatar-upload-status" style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;"></div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Ismingiz</label>
+            <input type="text" id="prof-display-name-input" class="form-input" placeholder="Ismingizni kiriting" maxlength="50">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label">Nikingiz (@username)</label>
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="prof-username-display" class="form-input" style="background: var(--bg-main); opacity: 0.9;" readonly>
+              <button id="btn-copy-username" class="btn-secondary" onclick="if(window.Auth&&Auth.copyUsername)Auth.copyUsername()" style="white-space: nowrap; padding: 0 12px; font-size: 12px;">📋 Nusxa</button>
+            </div>
+          </div>
+
+          <!-- Profile Password / PIN feature -->
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <span>🔑 Profil Paroli (Shifrlangan)</span>
+              <span id="password-status-badge" style="font-size: 11px; color: var(--text-muted);">O'rnatilmagan</span>
+            </label>
+            <div style="position: relative;">
+              <input type="password" id="prof-password-input" class="form-input" placeholder="Yangi parol kiriting (o'zgartirish uchun)" maxlength="50">
+              <button type="button" id="btn-toggle-prof-password" onclick="if(window.Auth&&Auth.toggleProfilePasswordVisibility)Auth.toggleProfilePasswordVisibility()" style="position: absolute; right: 10px; top: 12px; background: none; border: none; font-size: 16px; cursor: pointer;">👁️</button>
+            </div>
+            <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block; line-height: 1.4;">
+              🛡️ <em>Xakerlardan to'liq himoyalangan:</em> Parollar kuchli <strong>scrypt</strong> shifrlash algoritmi orqali saqlanadi. <strong>@nikingiz</strong> va <strong>ushbu parol</strong> orqali boshqa qurilmadan ham tez kirish mumkin!
+            </small>
+          </div>
+
+          <button class="btn-primary" id="btn-save-profile" onclick="if(window.Auth&&Auth.handleSaveProfile)Auth.handleSaveProfile()" style="width: 100%;">
+            <span>Saqlash</span>
+            <span>💾</span>
+          </button>
+        </div>
+
+        <!-- 2. Multi-Account Switcher (Ulangan Profillar) -->
+        <div class="settings-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px;">
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span>👥 Ulangan Hisoblar (1 klikda o'tish)</span>
+          </div>
+
+          <div id="saved-accounts-list" style="margin-bottom: 12px;">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Add / Connect another account -->
+          <button class="btn-secondary" id="btn-add-account" onclick="if(window.Auth&&Auth.addNewAccount)Auth.addNewAccount()" style="width: 100%; border: 1px dashed var(--primary); color: var(--primary); font-weight: 600;">
+            <span>➕ Boshqa profilga ulanish</span>
+          </button>
+        </div>
+
+        <!-- 3. Faol Seanslar Menu Button (Opens Dedicated Screen) -->
+        <div class="settings-menu-item-btn" id="btn-open-sessions-modal" onclick="if(window.Auth&&Auth.openSessionsModal)Auth.openSessionsModal()" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; cursor: pointer; transition: background 0.15s ease;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(37,99,235,0.12); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+              📱
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">Faol seanslar va Qurilmalar</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 1px;" id="profile-sessions-count-text">Ulangan qurilmalarni ko'rish va boshqarish</div>
+            </div>
+          </div>
+          <div style="font-size: 20px; color: var(--text-muted); font-weight: 300;">›</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- SESSIONS & CONNECTED DEVICES MODAL (DEDICATED SCREEN)  -->
+  <!-- ======================================================= -->
+  <div class="modal-overlay" id="sessions-modal" onclick="if(event.target===this){if(window.Auth&&Auth.closeSessionsModal){Auth.closeSessionsModal();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet" style="max-height: 85vh; overflow-y: auto;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="icon-btn" onclick="if(window.Auth&&Auth.closeSessionsModal)Auth.closeSessionsModal()" style="font-size: 16px; margin-left: -4px;">⬅️</button>
+          <span>Faol Seanslar va Qurilmalar</span>
+        </div>
+        <button id="close-sessions-modal-btn" class="icon-btn" onclick="if(window.Auth&&Auth.closeSessionsModal){Auth.closeSessionsModal();}else{const m=document.getElementById('sessions-modal');if(m)m.classList.remove('open');}" style="font-size: 16px;">✕</button>
+      </div>
+
+      <div style="padding: 16px;">
+        <!-- Security Policy Notice (Telegram style 7-day rule) -->
+        <div id="sessions-security-banner" class="sessions-notice" style="background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.25); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; line-height: 1.5; color: var(--text-main);">
+          <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; margin-bottom: 4px; color: var(--primary);">
+            <span>🛡️</span>
+            <span>7 kunlik xavfsizlik qoidasi:</span>
+          </div>
+          <span id="sessions-tenure-status">Akkauntingizni himoyalash maqsadida, yangi ulangan qurilmalar boshqa qurilmalarni chiqarib yuborishi uchun kamida 7 kun faol turishi shart.</span>
+        </div>
+
+        <!-- Current Device -->
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Ushbu qurilma:</div>
+        <div id="current-device-container" style="margin-bottom: 16px;">
+          <div style="color: var(--text-muted); font-size: 12px;">Yuklanmoqda...</div>
+        </div>
+
+        <!-- Other Active Devices -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Boshqa ulangan qurilmalar:</div>
+          <button type="button" class="btn-secondary" id="btn-refresh-sessions" onclick="if(window.Auth&&Auth.loadSessions)Auth.loadSessions()" style="padding: 2px 8px; font-size: 11px; border-radius: 8px;">🔄 Yangilash</button>
+        </div>
+        <div id="other-devices-list" style="margin-bottom: 16px;">
+          <div style="color: var(--text-muted); font-size: 12px;">Boshqa qurilmalar mavjud emas</div>
+        </div>
+
+        <!-- Terminate All Other Sessions Button -->
+        <button type="button" class="btn-secondary" id="btn-terminate-all-sessions" onclick="if(window.Auth&&Auth.terminateAllOtherSessions)Auth.terminateAllOtherSessions()" style="width: 100%; border: 1px solid rgba(239,68,68,0.4); color: #ef4444; background: rgba(239,68,68,0.06); font-weight: 600; padding: 12px; border-radius: var(--radius-md);">
+          <span>🚪 Barcha boshqa qurilmalarni chiqarish</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Fullscreen Lightbox Modal -->
+  <div id="media-lightbox-modal" class="lightbox-modal" style="display: none;">
+    <button id="close-lightbox-btn" class="lightbox-close-btn">✕</button>
+    <img id="lightbox-img" class="lightbox-content-img" src="" alt="Zoom">
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- SETTINGS MODAL / SECRET ENTRYWAY                        -->
+  <!-- ======================================================= -->
+  <div class="modal-overlay" id="settings-modal" onclick="if(event.target===this){if(window.App&&App.closeSettings){App.closeSettings();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <span>Sozlamalar</span>
+        <button id="close-settings-btn" class="icon-btn" onclick="if(window.App&&App.closeSettings){App.closeSettings();}else{const m=document.getElementById('settings-modal');if(m)m.classList.remove('open');}" style="font-size: 16px;">✕</button>
+      </div>
+
+      <div class="settings-list">
+        <!-- Dark Mode Toggle -->
+        <div class="settings-item" id="toggle-dark-mode" style="cursor: pointer;">
+          <div class="settings-item-left">
+            <span class="settings-item-icon">🌙</span>
+            <div>
+              <div class="settings-item-title">Tungi rejim</div>
+              <div class="settings-item-desc">Ko'zni charchatmaydigan qorong'i ko'rinish</div>
+            </div>
+          </div>
+          <input type="checkbox" id="dark-mode-checkbox" style="transform: scale(1.2); cursor: pointer;">
+        </div>
+
+        <!-- Offline database status -->
+        <div class="settings-item">
+          <div class="settings-item-left">
+            <span class="settings-item-icon">📦</span>
+            <div>
+              <div class="settings-item-title">Oflayn baza</div>
+              <div class="settings-item-desc">1,500+ so'z xotirada saqlangan</div>
+            </div>
+          </div>
+          <span style="font-size: 12px; color: var(--success); font-weight: 600;">Faol ✓</span>
+        </div>
+
+        <!-- SECRET ENTRYWAY ITEM -->
+        <div class="settings-item secret-entry-item" id="secret-entry-btn" onclick="if(window.App&&App.openSecretChat){App.openSecretChat();}else{console.log('App not ready');}" style="cursor: pointer;">
+          <div class="settings-item-left">
+            <span class="settings-item-icon">🎓</span>
+            <div>
+              <div class="settings-item-title">Maxsus funksiyalar va chatlar</div>
+              <div class="settings-item-desc">Qo'shimcha darsliklar va tarjimonlar muloqot tizimi</div>
+            </div>
+          </div>
+          <span style="color: var(--text-muted); font-size: 16px;">➔</span>
+        </div>
+
+        <!-- App info -->
+        <div class="settings-item">
+          <div class="settings-item-left">
+            <span class="settings-item-icon">ℹ️</span>
+            <div>
+              <div class="settings-item-title">Dastur haqida</div>
+              <div class="settings-item-desc">Wisdom English Dictionary v2.5.0 (Redmi 8 Edition)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Choice Action Sheet (Zero Gallery, Pure Camera Mode) -->
+  <div class="modal-overlay" id="camera-action-modal" onclick="if(event.target===this){if(window.Chat&&Chat.closeCameraActionSheet){Chat.closeCameraActionSheet();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet" style="padding-bottom: 24px;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <span>📷 Kamera orqali yuborish</span>
+        <button id="close-camera-action-btn" class="icon-btn" onclick="if(window.Chat&&Chat.closeCameraActionSheet)Chat.closeCameraActionSheet()" style="font-size: 16px;">✕</button>
+      </div>
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <button id="btn-choose-inapp-camera" class="camera-sheet-option" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;">
+          <span style="font-size: 26px;">🔴</span>
+          <div style="text-align: left;">
+            <div style="font-weight: 700; font-size: 15px;">Jonli kamera (Ilova ichida)</div>
+            <div style="font-size: 12px; opacity: 0.9;">Ekrandan chiqmasdan rasm yoki video olish</div>
+          </div>
+        </button>
+
+        <button id="btn-choose-camera-photo" class="camera-sheet-option">
+          <span style="font-size: 26px;">📸</span>
+          <div style="text-align: left;">
+            <div style="font-weight: 700; font-size: 15px;">Rasmga olish (Faqat Kamera)</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Telefon kamerasida to'g'ridan-to'g'ri suratga olish</div>
+          </div>
+        </button>
+
+        <button id="btn-choose-camera-video" class="camera-sheet-option">
+          <span style="font-size: 26px;">🎥</span>
+          <div style="text-align: left;">
+            <div style="font-weight: 700; font-size: 15px;">Videoga olish (Faqat Kamera)</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Telefon kamerasida to'g'ridan-to'g'ri video yozish</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Message Modal / Action Sheet -->
+  <div class="modal-overlay" id="delete-message-modal" onclick="if(event.target===this){if(window.Chat&&Chat.closeDeleteModal){Chat.closeDeleteModal();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet" style="padding-bottom: 24px; max-width: 420px;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <span>🗑️ Xabarni o'chirish</span>
+        <button id="close-delete-modal-btn" class="icon-btn" onclick="if(window.Chat&&Chat.closeDeleteModal)Chat.closeDeleteModal()" style="font-size: 16px;">✕</button>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13.5px; margin-bottom: 16px; padding: 0 4px;">
+        Ushbu xabarni qanday o'chirmoqchisiz?
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button type="button" id="btn-delete-for-me" class="camera-sheet-option" style="border: 1px solid var(--border); background: var(--bg-card); cursor: pointer;">
+          <span style="font-size: 22px;">🗑️</span>
+          <div style="text-align: left;">
+            <div style="font-weight: 700; font-size: 14.5px; color: var(--text);">Faqat o'zim uchun o'chirish</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Xabar faqat sizning qurilmangizda o'chadi</div>
+          </div>
+        </button>
+
+        <button type="button" id="btn-delete-for-everyone" class="camera-sheet-option" style="border: none; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; cursor: pointer;">
+          <span style="font-size: 22px;">👥</span>
+          <div style="text-align: left;">
+            <div style="font-weight: 700; font-size: 14.5px; color: #fff;">Ikki taraf uchun o'chirish</div>
+            <div style="font-size: 12px; color: rgba(255,255,255,0.9);">Sizda ham, suhbatdoshingizda ham butunlay o'chadi</div>
+          </div>
+        </button>
+
+        <button type="button" id="btn-cancel-delete" class="btn-secondary" onclick="if(window.Chat&&Chat.closeDeleteModal)Chat.closeDeleteModal()" style="margin-top: 4px; padding: 10px; font-weight: 600;">
+          Bekor qilish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Live Camera Viewfinder Modal -->
+  <div id="inapp-camera-modal" class="inapp-camera-overlay" style="display: none;">
+    <div class="camera-viewport-wrap">
+      <video id="inapp-camera-video" autoplay playsinline muted></video>
+      <canvas id="inapp-camera-canvas" style="display: none;"></canvas>
+
+      <!-- Review Preview (when photo is snapped or video is recorded) -->
+      <div id="camera-review-container" style="display: none;">
+        <img id="camera-review-img" src="" alt="Snapshot" style="display: none;">
+        <video id="camera-review-video" controls playsinline style="display: none;"></video>
+      </div>
+
+      <!-- Top Overlay Controls -->
+      <div class="camera-top-bar">
+        <button id="btn-close-inapp-camera" class="camera-ctrl-btn" title="Yopish">✕</button>
+        <div id="camera-recording-timer" class="recording-badge" style="display: none;">🔴 00:00</div>
+        <button id="btn-flip-inapp-camera" class="camera-ctrl-btn" title="Kamerani almashtirish">🔄</button>
+      </div>
+
+      <!-- Bottom Controls (Live View mode) -->
+      <div id="camera-live-controls" class="camera-bottom-bar">
+        <div class="camera-mode-toggle">
+          <button id="mode-btn-photo" class="camera-mode-pill active">Foto</button>
+          <button id="mode-btn-video" class="camera-mode-pill">Video</button>
+        </div>
+
+        <div class="camera-shutter-row">
+          <button id="btn-camera-shutter" class="camera-shutter-btn" title="Rasmga olish / Video boshlash">
+            <div class="shutter-inner"></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Controls (Review mode: Send or Retake) -->
+      <div id="camera-review-controls" class="camera-review-bar" style="display: none;">
+        <button id="btn-retake-camera" class="btn-camera-retake">
+          <span>🔄</span>
+          <span>Qayta olish</span>
+        </button>
+        <button id="btn-send-camera-capture" class="btn-camera-send">
+          <span>Yuborish</span>
+          <span>➤</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts with cache busting -->
+  <script src="/js/dictionary.js?v=2.8.3"></script>
+  <script src="/js/auth.js?v=2.8.3"></script>
+  <script src="/js/chat.js?v=2.8.3"></script>
+  <script src="/js/app.js?v=2.8.3"></script>
+</body>
+</html>

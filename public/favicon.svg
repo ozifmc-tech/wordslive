@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="wGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#e0f2fe" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <path d="M 140 390 Q 256 415 372 390" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="16" stroke-linecap="round" />
+  <path d="M 120 180 L 190 350 L 256 240 L 322 350 L 392 180" 
+        fill="none" 
+        stroke="url(#wGrad)" 
+        stroke-width="38" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+  <circle cx="410" cy="140" r="26" fill="#10b981" />
+  <circle cx="410" cy="140" r="38" fill="none" stroke="#34d399" stroke-width="6" opacity="0.6" />
+</svg>
