@@ -155,6 +155,11 @@ const Chat = (() => {
           setTimeout(() => App.setMediaPickingActive(false), 2000);
         }
       });
+      galleryInput.addEventListener('cancel', () => {
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          App.setMediaPickingActive(false);
+        }
+      });
     }
 
     // Dedicated Document / Any File Input (PDF, Word, Zip, APK, etc.)
@@ -168,6 +173,11 @@ const Chat = (() => {
         docInput.value = '';
         if (typeof App !== 'undefined' && App.setMediaPickingActive) {
           setTimeout(() => App.setMediaPickingActive(false), 2000);
+        }
+      });
+      docInput.addEventListener('cancel', () => {
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          App.setMediaPickingActive(false);
         }
       });
     }
@@ -185,6 +195,11 @@ const Chat = (() => {
           setTimeout(() => App.setMediaPickingActive(false), 2000);
         }
       });
+      cameraPhotoInput.addEventListener('cancel', () => {
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          App.setMediaPickingActive(false);
+        }
+      });
     }
 
     // Dedicated Camera Video Input
@@ -198,6 +213,11 @@ const Chat = (() => {
         cameraVideoInput.value = '';
         if (typeof App !== 'undefined' && App.setMediaPickingActive) {
           setTimeout(() => App.setMediaPickingActive(false), 2000);
+        }
+      });
+      cameraVideoInput.addEventListener('cancel', () => {
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          App.setMediaPickingActive(false);
         }
       });
     }
@@ -994,25 +1014,30 @@ const Chat = (() => {
   }
 
   async function flipRoundVideoCamera() {
-    currentRoundFacing = (currentRoundFacing === 'user' ? 'environment' : 'user');
+    const nextFacing = (currentRoundFacing === 'user' ? 'environment' : 'user');
     const liveFeed = document.getElementById('round-video-live-feed');
-
-    if (roundVideoStream) {
-      roundVideoStream.getVideoTracks().forEach(t => t.stop());
-    }
 
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: currentRoundFacing,
+          facingMode: nextFacing,
           width: { ideal: 480 },
           height: { ideal: 480 }
         }
       });
+      currentRoundFacing = nextFacing;
+
+      const oldTracks = roundVideoStream ? roundVideoStream.getVideoTracks() : [];
       const newVideoTrack = newStream.getVideoTracks()[0];
+
       if (roundVideoStream && newVideoTrack) {
+        oldTracks.forEach(t => {
+          roundVideoStream.removeTrack(t);
+          t.stop();
+        });
         roundVideoStream.addTrack(newVideoTrack);
       }
+
       if (liveFeed) {
         liveFeed.srcObject = roundVideoStream;
         liveFeed.style.transform = (currentRoundFacing === 'user') ? 'scaleX(-1)' : 'none';
@@ -1106,6 +1131,14 @@ const Chat = (() => {
     } else {
       video.pause();
       if (playBtn) playBtn.style.opacity = '1';
+    }
+  }
+
+  // Disconnect Socket.io
+  function disconnectSocket() {
+    if (socket) {
+      try { socket.disconnect(); } catch (_) {}
+      socket = null;
     }
   }
 
@@ -1804,10 +1837,11 @@ const Chat = (() => {
 
     const isFileWithSameText = isFile && msg.text && (msg.text.trim() === fileName.trim() || msg.text.trim() === (msg.mediaUrl.split('/').pop() || ''));
     const showText = msg.text && !isFileWithSameText;
+    const isPureVideoNote = isVideoNote && !showText;
 
     row.innerHTML = `
       <div class="msg-bubble-wrap">
-        <div class="message-bubble" data-msg-id="${msg.id}">
+        <div class="message-bubble ${isPureVideoNote ? 'is-video-note' : ''}" data-msg-id="${msg.id}">
           ${mediaHtml}
           ${showText ? `<div class="msg-text">${escapeHtml(msg.text)}</div>` : ''}
           <div class="msg-footer">
@@ -1962,6 +1996,7 @@ const Chat = (() => {
   return {
     init,
     connectSocket,
+    disconnectSocket,
     loadConversations,
     searchUsers,
     startChatWithUser,

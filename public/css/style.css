@@ -1430,6 +1430,8 @@ body.dark .msg-delete-btn {
   transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 .chat-media-btn:active {
@@ -2213,6 +2215,42 @@ body.dark .message-row.incoming .msg-file-card {
 /* ====================================================== */
 /* TELEGRAM-STYLE ROUND VIDEO NOTE ("Dumaloq video xabar") */
 /* ====================================================== */
+
+/* Telegram-Style Transparent Bubble for Pure Round Video */
+.message-bubble.is-video-note {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  position: relative !important;
+  width: auto !important;
+  display: inline-block !important;
+}
+
+.message-bubble.is-video-note .msg-footer {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 3px 8px;
+  border-radius: 12px;
+  color: #ffffff !important;
+  font-size: 10.5px;
+  font-weight: 600;
+  z-index: 5;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.message-bubble.is-video-note .msg-footer .msg-status-check {
+  color: #38bdf8;
+  font-size: 11px;
+}
 
 /* Round video bubble inside chat */
 .round-video-bubble-box {
