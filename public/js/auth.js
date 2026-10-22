@@ -481,7 +481,11 @@ const Auth = (() => {
       App.switchToView('chat-dashboard');
 
     } catch (err) {
-      App.showToast('Server bilan aloqa uzildi');
+      if (err && err.name === 'AbortError') {
+        App.showToast('Server javobi kechikdi, qayta yuborib ko\'ring');
+      } else {
+        App.showToast('Server bilan aloqa uzildi');
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span>Kirish</span><span>➔</span>';
@@ -502,12 +506,17 @@ const Auth = (() => {
     btn.disabled = true;
     btn.textContent = 'Yuborilmoqda...';
 
+    const controller = new AbortController();
+    const abortTimeout = setTimeout(() => controller.abort(), 6000);
+
     try {
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
+        signal: controller.signal
       });
+      clearTimeout(abortTimeout);
       const data = await res.json();
 
       if (!res.ok) {
@@ -542,7 +551,11 @@ const Auth = (() => {
       if (firstDigit) firstDigit.focus();
 
     } catch (err) {
-      App.showToast('Server bilan aloqa uzildi');
+      if (err && err.name === 'AbortError') {
+        App.showToast('Server javobi kechikdi, qayta yuborib ko\'ring');
+      } else {
+        App.showToast('Server bilan aloqa uzildi');
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span>Kodni yuborish</span><span>➔</span>';
@@ -994,7 +1007,11 @@ const Auth = (() => {
       if (modal) modal.classList.remove('open');
 
     } catch (err) {
-      App.showToast('Server bilan aloqa uzildi');
+      if (err && err.name === 'AbortError') {
+        App.showToast('Server javobi kechikdi, qayta yuborib ko\'ring');
+      } else {
+        App.showToast('Server bilan aloqa uzildi');
+      }
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span>Saqlash</span><span>💾</span>';

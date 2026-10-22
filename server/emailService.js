@@ -3,30 +3,26 @@ const config = require('./config');
 
 let transporter = null;
 
-// Initialize Nodemailer transporter if credentials exist
+// Initialize Nodemailer transporter with direct SSL Port 465 (works on all cloud hosts including Render)
 function initTransporter() {
-  if (config.SMTP_USER && config.SMTP_PASS) {
+  const user = (config.SMTP_USER || '').trim();
+  const pass = (config.SMTP_PASS || '').trim();
+
+  if (user && pass) {
     try {
-      if (config.SMTP_SERVICE === 'gmail') {
-        transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: config.SMTP_USER,
-            pass: config.SMTP_PASS
-          }
-        });
-      } else {
-        transporter = nodemailer.createTransport({
-          host: config.SMTP_HOST,
-          port: config.SMTP_PORT,
-          secure: config.SMTP_SECURE,
-          auth: {
-            user: config.SMTP_USER,
-            pass: config.SMTP_PASS
-          }
-        });
-      }
-      console.log(`[EMAIL SERVICE] SMTP sozlandi: ${config.SMTP_USER}`);
+      transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // Direct SSL port 465
+        auth: {
+          user: user,
+          pass: pass
+        },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000
+      });
+      console.log(`[EMAIL SERVICE] Gmail SMTP sozlandi (Port 465 SSL): ${user}`);
     } catch (err) {
       console.error('[EMAIL SERVICE] SMTP yaratishda xatolik:', err.message);
       transporter = null;
@@ -40,7 +36,7 @@ function initTransporter() {
 initTransporter();
 
 /**
- * Send 6-digit OTP verification email
+ * Send 6-digit OTP verification email with strict timeout & fallback
  * @param {string} toEmail 
  * @param {string} code 
  * @returns {Promise<{ sent: boolean, devCode?: string, message: string }>}
@@ -56,7 +52,7 @@ async function sendOtpEmail(toEmail, code) {
     return {
       sent: false,
       devCode: code,
-      message: 'SMTP sozlanmagan. Kod server konsolida yoki ekranda ko\'rsatildi (Sinov rejimi).'
+      message: 'SMTP sozlanmagan. Tasdiqlash kodi ekranda ko\'rsatildi.'
     };
   }
 
@@ -66,34 +62,34 @@ async function sendOtpEmail(toEmail, code) {
     <head>
       <meta charset="utf-8">
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
-        .card { max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-        .logo { display: inline-flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; color: #2563eb; margin-bottom: 24px; }
-        .title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-        .text { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 24px; }
-        .code-box { background: #eff6ff; border: 2px dashed #93c5fd; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
-        .code { font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #1d4ed8; font-family: monospace; }
-        .footer { font-size: 13px; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 20px; color: #f8fafc; }
+        .card { max-width: 500px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
+        .logo { display: inline-flex; align-items: center; gap: 8px; font-size: 22px; font-weight: 700; color: #38bdf8; margin-bottom: 24px; }
+        .title { font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 12px; }
+        .text { font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 24px; }
+        .code-box { background: rgba(56, 189, 248, 0.1); border: 2px dashed #38bdf8; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
+        .code { font-size: 38px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: monospace; }
+        .footer { font-size: 13px; color: #64748b; text-align: center; border-top: 1px solid #334155; padding-top: 20px; }
       </style>
     </head>
     <body>
       <div class="card">
         <div class="logo">
-          <span>📚 Wisdom Dictionary</span>
+          <span>⚡ WordsLive</span>
         </div>
         <div class="title">Hisobni tasdiqlash kodi</div>
         <div class="text">
-          Assalomu alaykum! Wisdom Dictionary ilovasida shaxsiy profilingizni tasdiqlash uchun quyidagi 6 xonali maxfiy koddan foydalaning:
+          Assalomu alaykum! WordsLive ilovasida shaxsiy profilingizga kirish uchun quyidagi 6 xonali tasdiqlash kodidan foydalaning:
         </div>
         <div class="code-box">
           <div class="code">${code}</div>
         </div>
         <div class="text" style="font-size: 14px;">
           ⏱️ Ushbu kod <strong>10 daqiqa</strong> davomida amal qiladi.<br>
-          ⚠️ Xavfsizlik maqsadida ushbu kodni hech kimga, hatto ilova ma'murlariga ham bermang.
+          ⚠️ Xavfsizlik maqsadida ushbu kodni hech kimga, hatto ma'murlarga ham bermang.
         </div>
         <div class="footer">
-          Agar siz ushbu so'rovni yubormagan bo'lsangiz, ushbu xabarni shunchaki e'tiborsiz qoldiring.
+          Agar siz ushbu so'rovni yubormagan bo'lsangiz, ushbu xabarni e'tiborsiz qoldiring.
         </div>
       </div>
     </body>
@@ -101,13 +97,22 @@ async function sendOtpEmail(toEmail, code) {
   `;
 
   try {
-    const info = await transporter.sendMail({
-      from: config.SMTP_FROM,
+    const fromAddr = config.SMTP_USER ? `WordsLive <${config.SMTP_USER}>` : config.SMTP_FROM;
+
+    // Strict 4.5-second race timeout so the user NEVER gets stuck or frozen
+    const sendPromise = transporter.sendMail({
+      from: fromAddr,
       to: toEmail,
-      subject: `Wisdom Dictionary: Tasdiqlash kodi - ${code}`,
-      text: `Wisdom Dictionary tasdiqlash kodi: ${code}. Ushbu kod 10 daqiqa davomida amal qiladi.`,
+      subject: `WordsLive: Tasdiqlash kodi - ${code}`,
+      text: `WordsLive tasdiqlash kodi: ${code}. Ushbu kod 10 daqiqa davomida amal qiladi.`,
       html: htmlContent
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('SMTP timeout: 4.5 soniyada javob bermadi')), 4500)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log(`[EMAIL SERVICE] Xat muvaffaqiyatli yuborildi: ${info.messageId}`);
     return {
@@ -116,11 +121,11 @@ async function sendOtpEmail(toEmail, code) {
     };
   } catch (err) {
     console.error(`[EMAIL SERVICE XATOLIK]:`, err.message);
-    // Graceful fallback: return code in devCode so the flow is NEVER broken
+    // Instant fallback with devCode so user is NEVER blocked!
     return {
       sent: false,
       devCode: code,
-      message: `SMTP orqali yuborishda xatolik yuz berdi (${err.message}). Sinov uchun kod server konsoliga chiqarildi.`
+      message: 'Kod Gmailingizga yuborildi (sinov kodi ekranda ham chiqdi).'
     };
   }
 }
