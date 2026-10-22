@@ -36,7 +36,8 @@ const { searchDictionary, dictionaryWords } = require('./dictionaryData');
 const { 
   securityHeadersMiddleware, 
   wafMiddleware,
-  loginRateLimiter, 
+  loginRateLimiter,
+  registerRateLimiter,
   otpRequestLimiter, 
   apiGeneralLimiter, 
   isAllowedFileExtension,
@@ -143,7 +144,7 @@ app.put('/api/auth/profile', authMiddleware, updateProfile);
 app.post('/api/auth/update-profile', authMiddleware, updateProfile);
 app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), uploadAvatar);
 app.post('/api/auth/login-with-password', loginRateLimiter, loginWithPassword);
-app.post('/api/auth/register-with-password', loginRateLimiter, registerWithPassword);
+app.post('/api/auth/register-with-password', registerRateLimiter, registerWithPassword);
 
 // Active Devices & Telegram-Style 7-Day Session Security
 app.get('/api/auth/sessions', authMiddleware, getSessions);

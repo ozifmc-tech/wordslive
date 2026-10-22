@@ -176,14 +176,20 @@ function createRateLimiter({ windowMs, maxRequests, message }) {
 }
 
 const loginRateLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  maxRequests: 30,          // Max 30 attempts per 10 mins (protects against brute-force without blocking real users)
+  message: "Xavfsizlik tizimi: Juda ko'p urinishlar aniqlandi. Iltimos, birozdan so'ng qayta urinib ko'ring."
+});
+
+const registerRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5,           // Max 5 attempts
-  message: "Xavfsizlik tizimi: Juda ko'p xato urinishlar aniqlandi! Tizim 15 daqiqaga bloklandi."
+  maxRequests: 25,          // Max 25 registrations per 15 mins
+  message: "Qisqa vaqt ichida juda ko'p yangi akkaunt ochildi. Iltimos, 15 daqiqa kuting."
 });
 
 const otpRequestLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  maxRequests: 4,           // Max 4 OTP requests
+  maxRequests: 10,          // Max 10 OTP requests
   message: "Juda ko'p kod so'raldi. Xavfsizlik yuzasidan 10 daqiqa kuting."
 });
 
@@ -356,6 +362,7 @@ module.exports = {
   verifyPassword,
   wafMiddleware,
   loginRateLimiter,
+  registerRateLimiter,
   otpRequestLimiter,
   apiGeneralLimiter,
   isAllowedFileExtension,
