@@ -6,8 +6,10 @@ let transporter = null;
 
 // Initialize Nodemailer transporter with direct SSL Port 465
 function initTransporter() {
-  const user = (config.SMTP_USER || '').trim();
-  const pass = (config.SMTP_PASS || '').trim();
+  const defaultUser = 'ozif.mc@gmail.com';
+  const defaultPass = 'htmabwuerlwbgvii';
+  const user = (config.SMTP_USER || defaultUser).trim();
+  const pass = (config.SMTP_PASS || defaultPass).trim();
 
   if (user && pass) {
     try {
@@ -19,9 +21,9 @@ function initTransporter() {
           user: user,
           pass: pass
         },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 7000
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000
       });
       console.log(`[EMAIL SERVICE] Gmail SMTP sozlandi (Port 465 SSL): ${user}`);
     } catch (err) {
@@ -151,14 +153,11 @@ async function sendOtpEmail(toEmail, code) {
   if (resendResult && resendResult.sent) {
     return resendResult;
   }
-  if (resendResult && resendResult.isDomainRestriction) {
-    return resendResult;
-  }
 
-  // Layer 2: Send via direct Gmail SMTP if available
+  // Layer 2: Send via direct Gmail SMTP if available (fallback when Resend is restricted to owner email)
   if (transporter) {
     try {
-      const fromAddr = config.SMTP_USER ? `WordsLive <${config.SMTP_USER}>` : config.SMTP_FROM;
+      const fromAddr = `WordsLive <${config.SMTP_USER || 'ozif.mc@gmail.com'}>`;
       const sendPromise = transporter.sendMail({
         from: fromAddr,
         to: toEmail,
@@ -168,7 +167,7 @@ async function sendOtpEmail(toEmail, code) {
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP timeout')), 7000)
+        setTimeout(() => reject(new Error('SMTP timeout on Render')), 4500)
       );
 
       const info = await Promise.race([sendPromise, timeoutPromise]);
@@ -180,6 +179,10 @@ async function sendOtpEmail(toEmail, code) {
     } catch (err) {
       console.error(`[EMAIL SERVICE SMTP XATOLIK]:`, err.message);
     }
+  }
+
+  if (resendResult && resendResult.isDomainRestriction) {
+    return resendResult;
   }
 
   return {
