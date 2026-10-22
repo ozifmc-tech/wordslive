@@ -144,6 +144,27 @@ const Auth = (() => {
       });
     }
 
+    // Toggle registration password visibility
+    const toggleRegPwdBtn = document.getElementById('btn-toggle-reg-pwd');
+    const regPwdInput = document.getElementById('reg-password-input');
+    if (toggleRegPwdBtn && regPwdInput) {
+      toggleRegPwdBtn.addEventListener('click', () => {
+        const isPwd = regPwdInput.type === 'password';
+        regPwdInput.type = isPwd ? 'text' : 'password';
+        toggleRegPwdBtn.textContent = isPwd ? '🔒' : '👁️';
+      });
+    }
+
+    // Forgot password (switch to Gmail OTP)
+    const forgotPwdBtn = document.getElementById('btn-forgot-password');
+    if (forgotPwdBtn) {
+      forgotPwdBtn.addEventListener('click', () => {
+        const tabOtp = document.getElementById('tab-auth-mode-otp');
+        if (tabOtp) tabOtp.click();
+        App.showToast("Ushbu hisobga ulangan Gmailingizni kiriting va tasdiqlash kodi orqali parolsiz kiring");
+      });
+    }
+
     // 3. Send OTP button
     const sendOtpBtn = document.getElementById('auth-send-otp-btn');
     if (sendOtpBtn) {
@@ -629,10 +650,12 @@ const Auth = (() => {
     const nameInput = document.getElementById('pwd-reg-name-input');
     const usernameInput = document.getElementById('pwd-reg-username-input');
     const pwdInput = document.getElementById('pwd-reg-password-input');
+    const emailInput = document.getElementById('pwd-reg-email-input');
 
     const displayName = (nameInput ? nameInput.value : '').trim();
     const username = (usernameInput ? usernameInput.value : '').trim().toLowerCase().replace(/^@/, '');
     const password = (pwdInput ? pwdInput.value : '').trim();
+    const email = (emailInput ? emailInput.value : '').trim().toLowerCase();
 
     if (displayName.length < 2) {
       App.showToast('Iltimos, ismingizni kiriting (kamida 2 belgi)');
@@ -652,13 +675,18 @@ const Auth = (() => {
     btn.textContent = 'Yaratilmoqda...';
 
     try {
+      const payload = { displayName, username, password, deviceId: getDeviceId() };
+      if (email && email.includes('@')) {
+        payload.email = email;
+      }
+
       const res = await fetch('/api/auth/register-with-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-device-id': getDeviceId()
         },
-        body: JSON.stringify({ displayName, username, password, deviceId: getDeviceId() })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
 
@@ -736,8 +764,19 @@ const Auth = (() => {
       showStep('otp');
       startOtpTimer(600);
 
-      const firstDigit = document.querySelector('.otp-digit');
-      if (firstDigit) firstDigit.focus();
+      if (data.codePreview) {
+        App.showToast(data.message || `Tasdiqlash kodi: ${data.codePreview}`, 7000);
+        const digits = document.querySelectorAll('.otp-digit');
+        if (digits && digits.length === 6) {
+          data.codePreview.split('').forEach((char, i) => {
+            if (digits[i]) digits[i].value = char;
+          });
+        }
+      } else {
+        App.showToast(data.message || 'Kod Gmailingizga yuborildi!');
+        const firstDigit = document.querySelector('.otp-digit');
+        if (firstDigit) firstDigit.focus();
+      }
 
     } catch (err) {
       if (err && err.name === 'AbortError') {
@@ -866,9 +905,11 @@ const Auth = (() => {
   async function handleCompleteRegistration() {
     const nameInput = document.getElementById('reg-name-input');
     const usernameInput = document.getElementById('reg-username-input');
+    const pwdInput = document.getElementById('reg-password-input');
 
     const displayName = (nameInput ? nameInput.value : '').trim();
-    const username = (usernameInput ? usernameInput.value : '').trim().toLowerCase();
+    const username = (usernameInput ? usernameInput.value : '').trim().toLowerCase().replace(/^@/, '');
+    const password = (pwdInput ? pwdInput.value : '').trim();
 
     if (displayName.length < 2) {
       App.showToast('Iltimos, ismingizni kiriting (kamida 2 belgi)');
@@ -880,9 +921,17 @@ const Auth = (() => {
       return;
     }
 
+    if (!password || password.length < 6) {
+      App.showToast('Iltimos, kamida 6 ta belgidan iborat parol o\'rnating');
+      if (pwdInput) pwdInput.focus();
+      return;
+    }
+
     const btn = document.getElementById('auth-complete-reg-btn');
     btn.disabled = true;
     btn.textContent = 'Yaratilmoqda...';
+
+    const effectiveEmail = pendingEmail || localStorage.getItem('wisdom_pending_email') || '';
 
     try {
       const res = await fetch('/api/auth/register-profile', {
@@ -892,9 +941,10 @@ const Auth = (() => {
           'x-device-id': getDeviceId()
         },
         body: JSON.stringify({
-          email: pendingEmail || localStorage.getItem('wisdom_pending_email') || '',
+          email: effectiveEmail,
           username,
           displayName,
+          password,
           deviceId: getDeviceId()
         })
       });
@@ -1108,6 +1158,7 @@ const Auth = (() => {
     function populateModalFields() {
       const nameInput = document.getElementById('prof-display-name-input');
       const unDisplay = document.getElementById('prof-username-display');
+      const emailDisplay = document.getElementById('prof-email-display');
       const pwdInput = document.getElementById('prof-password-input');
       const pwdBadge = document.getElementById('password-status-badge');
       const avatarPreview = document.getElementById('prof-avatar-preview');
@@ -1117,6 +1168,7 @@ const Auth = (() => {
       if (currentUser) {
         if (nameInput) nameInput.value = currentUser.displayName || '';
         if (unDisplay) unDisplay.value = `@${currentUser.username || ''}`;
+        if (emailDisplay) emailDisplay.value = currentUser.email || 'Ulangan Gmail yo\'q';
         if (pwdInput) pwdInput.value = '';
         if (avatarPreview) {
           const initial = (currentUser.displayName || currentUser.username || 'U').charAt(0).toUpperCase();

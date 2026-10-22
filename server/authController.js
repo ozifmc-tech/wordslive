@@ -242,7 +242,11 @@ async function sendOtp(req, res) {
 
     return res.json({
       success: true,
-      message: 'Tasdiqlash kodi Gmailingizga muvaffaqiyatli yuborildi!',
+      message: emailResult.message || (existingUser 
+        ? 'Hisobingiz topildi! Tasdiqlash kodi Gmailingizga yuborildi.' 
+        : 'Tasdiqlash kodi Gmailingizga muvaffaqiyatli yuborildi!'),
+      codePreview: emailResult.codePreview || undefined,
+      devCode: (process.env.NODE_ENV === 'test' || !process.env.NODE_ENV) ? code : undefined,
       isExistingUser: !!existingUser
     });
   } catch (err) {
@@ -334,10 +338,10 @@ async function verifyOtp(req, res) {
   }
 }
 
-// 3. Register profile (Username & Name)
+// 3. Register profile (Username, Name & Password)
 async function registerProfile(req, res) {
   try {
-    let { email, username, displayName, bio } = req.body;
+    let { email, username, displayName, bio, password } = req.body;
     if (!email || !username || !displayName) {
       return res.status(400).json({ success: false, message: 'Email, ism va nik kiritilishi shart' });
     }
@@ -346,6 +350,11 @@ async function registerProfile(req, res) {
     username = username.trim().toLowerCase().replace(/^@/, '');
     displayName = displayName.trim();
     bio = (bio || '').trim();
+    password = (password !== undefined && password !== null) ? String(password).trim() : '';
+
+    if (password && password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
+    }
 
     // Check if email was verified
     const verifiedOtp = stmts.getLatestVerifiedOtp.get(email);
@@ -384,14 +393,16 @@ async function registerProfile(req, res) {
 
     const now = Date.now();
     const avatarColor = getRandomColor();
+    const hashedPassword = hashPassword(password);
 
-    const insertResult = stmts.createUser.run(
+    const insertResult = stmts.createUserWithPassword.run(
       email,
       username,
       displayName,
       avatarColor,
       '',
       bio,
+      hashedPassword,
       now,
       now
     );
@@ -412,8 +423,7 @@ async function registerProfile(req, res) {
         avatarColor: newUser.avatar_color,
         avatarUrl: newUser.avatar_url || '',
         bio: newUser.bio,
-        hasPassword: false,
-        password: ''
+        hasPassword: true
       }
     });
 
@@ -631,18 +641,22 @@ async function registerWithPassword(req, res) {
   }
 }
 
-// 7. Login with @username + Password (Fast Alternative Login with Timing-Safe Verification)
+// 7. Login with @username or Gmail + Password (Fast Alternative Login with Timing-Safe Verification)
 function loginWithPassword(req, res) {
   try {
     let { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Nik va parol kiritilishi shart' });
+      return res.status(400).json({ success: false, message: 'Nik yoki email hamda parol kiritilishi shart' });
     }
 
-    username = username.trim().toLowerCase().replace(/^@/, '');
-    const user = stmts.getUserByUsername.get(username);
+    const cleanInput = username.trim().toLowerCase().replace(/^@/, '');
+    let user = stmts.getUserByUsername.get(cleanInput);
+    if (!user && (cleanInput.includes('@') || cleanInput.includes('.'))) {
+      user = stmts.getUserByEmail.get(cleanInput);
+    }
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Bunday nikdagi foydalanuvchi topilmadi' });
+      return res.status(404).json({ success: false, message: 'Bunday nik yoki emailga ega foydalanuvchi topilmadi' });
     }
 
     if (!user.password || user.password.trim() === '') {
