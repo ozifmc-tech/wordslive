@@ -245,8 +245,6 @@ async function sendOtp(req, res) {
       message: emailResult.message || (existingUser 
         ? 'Hisobingiz topildi! Tasdiqlash kodi Gmailingizga yuborildi.' 
         : 'Tasdiqlash kodi Gmailingizga muvaffaqiyatli yuborildi!'),
-      codePreview: emailResult.codePreview || undefined,
-      devCode: (process.env.NODE_ENV === 'test' || !process.env.NODE_ENV) ? code : undefined,
       isExistingUser: !!existingUser
     });
   } catch (err) {

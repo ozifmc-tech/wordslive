@@ -82,7 +82,7 @@ function setupSocketIO(io) {
 
         const receiverId = conv.user1_id === user.id ? conv.user2_id : conv.user1_id;
         const msgTime = Date.now();
-        const lastMsgDisplay = cleanText || (mediaType === 'audio' ? '🎙️ Ovozli xabar' : (mediaType === 'video' ? '🎥 Video' : (mediaType === 'file' ? '📁 Fayl' : '📷 Rasm')));
+        const lastMsgDisplay = cleanText || (mediaType === 'video_note' ? '⭕ Dumaloq video' : (mediaType === 'audio' ? '🎙️ Ovozli xabar' : (mediaType === 'video' ? '🎥 Video' : (mediaType === 'file' ? '📁 Fayl' : '📷 Rasm'))));
 
         // Save to SQLite
         const insertResult = stmts.saveMessage.run(

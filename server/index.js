@@ -227,6 +227,12 @@ app.post('/api/chat/upload', authMiddleware, upload.single('media'), (req, res) 
     const imageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'ico'];
 
     if (
+      clientType === 'video_note' ||
+      req.body.source === 'video_note'
+    ) {
+      mediaType = 'video_note';
+      mediaSource = 'video_note';
+    } else if (
       clientType === 'file' ||
       (!videoExts.includes(ext) && !audioExts.includes(ext) && !imageExts.includes(ext))
     ) {

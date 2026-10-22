@@ -759,24 +759,13 @@ const Auth = (() => {
       localStorage.setItem('wisdom_pending_email', email);
       localStorage.setItem('wisdom_pending_step', 'otp');
       localStorage.setItem('wisdom_otp_expires', (Date.now() + 600 * 1000).toString());
-      App.showToast(data.message || 'Kod Gmailingizga yuborildi!');
+      App.showToast(data.message || 'Tasdiqlash kodi Gmailingizga yuborildi!');
 
       showStep('otp');
       startOtpTimer(600);
 
-      if (data.codePreview) {
-        App.showToast(data.message || `Tasdiqlash kodi: ${data.codePreview}`, 7000);
-        const digits = document.querySelectorAll('.otp-digit');
-        if (digits && digits.length === 6) {
-          data.codePreview.split('').forEach((char, i) => {
-            if (digits[i]) digits[i].value = char;
-          });
-        }
-      } else {
-        App.showToast(data.message || 'Kod Gmailingizga yuborildi!');
-        const firstDigit = document.querySelector('.otp-digit');
-        if (firstDigit) firstDigit.focus();
-      }
+      const firstDigit = document.querySelector('.otp-digit');
+      if (firstDigit) firstDigit.focus();
 
     } catch (err) {
       if (err && err.name === 'AbortError') {

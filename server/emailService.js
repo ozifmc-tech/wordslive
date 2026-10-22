@@ -274,9 +274,8 @@ async function sendOtpEmail(toEmail, code) {
 
     return {
       sent: true,
-      codePreview: code,
       isDomainRestriction: true,
-      message: `Tasdiqlash kodi yuborildi! Kod: ${code}`
+      message: 'Tasdiqlash kodi emailingizga muvaffaqiyatli yuborildi!'
     };
   }
 

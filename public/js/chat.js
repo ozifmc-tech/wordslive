@@ -118,8 +118,9 @@ const Chat = (() => {
         }
       });
 
-      // Auto-growing textarea & typing notification
+      // Auto-growing textarea & typing notification + Send/Media button switcher
       msgInput.addEventListener('input', () => {
+        updateInputButtons();
         msgInput.style.height = 'auto';
         msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
 
@@ -138,17 +139,12 @@ const Chat = (() => {
       });
     }
 
-    // 1. Gallery upload button (Photos & Videos up to 200MB)
-    const btnGallery = document.getElementById('btn-open-gallery');
-    const galleryInput = document.getElementById('media-gallery-input');
-    if (btnGallery && galleryInput) {
-      btnGallery.addEventListener('click', () => {
-        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-          App.setMediaPickingActive(true);
-        }
-        galleryInput.click();
-      });
+    // Dynamic Telegram-style media action button listeners (Voice 🎙️ / Round Video 📹)
+    setupMediaButtonListeners();
 
+    // Dedicated Gallery Input (Photos & Videos up to 200MB)
+    const galleryInput = document.getElementById('media-gallery-input');
+    if (galleryInput) {
       galleryInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
@@ -161,18 +157,9 @@ const Chat = (() => {
       });
     }
 
-    // 1b. Document / Any File Input (PDF, Word, Zip, APK, etc.)
+    // Dedicated Document / Any File Input (PDF, Word, Zip, APK, etc.)
     const docInput = document.getElementById('media-doc-input');
-    const btnDoc = document.getElementById('btn-open-file');
-
-    if (btnDoc && docInput) {
-      btnDoc.addEventListener('click', () => {
-        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-          App.setMediaPickingActive(true);
-        }
-        docInput.click();
-      });
-
+    if (docInput) {
       docInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
@@ -185,102 +172,43 @@ const Chat = (() => {
       });
     }
 
-    // 2. Camera Button & Camera Choice Action Sheet (Zero Gallery, Pure Camera)
-    const btnCamera = document.getElementById('btn-open-camera');
-    const cameraActionModal = document.getElementById('camera-action-modal');
-    const closeCameraActionBtn = document.getElementById('close-camera-action-btn');
-
+    // Dedicated Camera Photo Input
     const cameraPhotoInput = document.getElementById('media-camera-photo-input');
-    const cameraVideoInput = document.getElementById('media-camera-video-input');
-    const btnChooseInappCamera = document.getElementById('btn-choose-inapp-camera');
-    const btnChooseCameraPhoto = document.getElementById('btn-choose-camera-photo');
-    const btnChooseCameraVideo = document.getElementById('btn-choose-camera-video');
-
-    if (btnCamera && cameraActionModal) {
-      btnCamera.addEventListener('click', () => {
-        cameraActionModal.classList.add('open');
-      });
-
-      if (closeCameraActionBtn) {
-        closeCameraActionBtn.addEventListener('click', () => {
-          cameraActionModal.classList.remove('open');
-        });
-      }
-
-      cameraActionModal.addEventListener('click', (e) => {
-        if (e.target === cameraActionModal) {
-          cameraActionModal.classList.remove('open');
+    if (cameraPhotoInput) {
+      cameraPhotoInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          uploadAndSendMedia(file, 'camera');
+        }
+        cameraPhotoInput.value = '';
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          setTimeout(() => App.setMediaPickingActive(false), 2000);
         }
       });
-
-      // Option A: Live In-App Viewfinder
-      if (btnChooseInappCamera) {
-        btnChooseInappCamera.addEventListener('click', () => {
-          cameraActionModal.classList.remove('open');
-          openInAppCamera();
-        });
-      }
-
-      // Option B: Direct System Photo Camera (Zero Gallery)
-      if (btnChooseCameraPhoto && cameraPhotoInput) {
-        btnChooseCameraPhoto.addEventListener('click', () => {
-          cameraActionModal.classList.remove('open');
-          if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-            App.setMediaPickingActive(true);
-          }
-          cameraPhotoInput.click();
-        });
-      }
-
-      // Option C: Direct System Video Camera (Zero Gallery)
-      if (btnChooseCameraVideo && cameraVideoInput) {
-        btnChooseCameraVideo.addEventListener('click', () => {
-          cameraActionModal.classList.remove('open');
-          if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-            App.setMediaPickingActive(true);
-          }
-          cameraVideoInput.click();
-        });
-      }
-
-      if (cameraPhotoInput) {
-        cameraPhotoInput.addEventListener('change', (e) => {
-          const file = e.target.files && e.target.files[0];
-          if (file) {
-            uploadAndSendMedia(file, 'camera');
-          }
-          cameraPhotoInput.value = '';
-          if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-            setTimeout(() => App.setMediaPickingActive(false), 2000);
-          }
-        });
-      }
-
-      if (cameraVideoInput) {
-        cameraVideoInput.addEventListener('change', (e) => {
-          const file = e.target.files && e.target.files[0];
-          if (file) {
-            uploadAndSendMedia(file, 'camera');
-          }
-          cameraVideoInput.value = '';
-          if (typeof App !== 'undefined' && App.setMediaPickingActive) {
-            setTimeout(() => App.setMediaPickingActive(false), 2000);
-          }
-        });
-      }
     }
 
-    // 3. In-App Camera Viewfinder controls setup
+    // Dedicated Camera Video Input
+    const cameraVideoInput = document.getElementById('media-camera-video-input');
+    if (cameraVideoInput) {
+      cameraVideoInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          uploadAndSendMedia(file, 'camera');
+        }
+        cameraVideoInput.value = '';
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          setTimeout(() => App.setMediaPickingActive(false), 2000);
+        }
+      });
+    }
+
+    // In-App Camera Viewfinder controls setup
     setupInAppCameraListeners();
 
-    // 4. Voice Note / Audio Recording buttons
-    const btnVoiceRecord = document.getElementById('btn-voice-record');
+    // Voice Note / Audio Recording bar buttons
     const btnCancelVoice = document.getElementById('btn-cancel-voice-record');
     const btnSendVoice = document.getElementById('btn-send-voice-record');
 
-    if (btnVoiceRecord) {
-      btnVoiceRecord.addEventListener('click', startVoiceRecording);
-    }
     if (btnCancelVoice) {
       btnCancelVoice.addEventListener('click', cancelVoiceRecording);
     }
@@ -800,6 +728,387 @@ const Chat = (() => {
     voiceRecorder.stop();
   }
 
+  // -------------------------------------------------------------
+  // TELEGRAM-STYLE ATTACHMENT MENU CONTROLLER (📎)
+  // -------------------------------------------------------------
+  function openAttachmentMenu() {
+    const modal = document.getElementById('attachment-menu-modal');
+    if (modal) modal.classList.add('open');
+  }
+
+  function closeAttachmentMenu() {
+    const modal = document.getElementById('attachment-menu-modal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  function pickGallery() {
+    closeAttachmentMenu();
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(true);
+    }
+    const input = document.getElementById('media-gallery-input');
+    if (input) input.click();
+  }
+
+  function pickDocument() {
+    closeAttachmentMenu();
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(true);
+    }
+    const input = document.getElementById('media-doc-input');
+    if (input) input.click();
+  }
+
+  function pickCameraPhoto() {
+    closeAttachmentMenu();
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(true);
+    }
+    const input = document.getElementById('media-camera-photo-input');
+    if (input) input.click();
+  }
+
+  function pickCameraVideo() {
+    closeAttachmentMenu();
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(true);
+    }
+    const input = document.getElementById('media-camera-video-input');
+    if (input) input.click();
+  }
+
+  // -------------------------------------------------------------
+  // TELEGRAM-STYLE DYNAMIC INPUT & MODE TOGGLE (➤ vs 🎙️ / 📹)
+  // -------------------------------------------------------------
+  let mediaNoteMode = 'voice'; // 'voice' (🎙️) or 'video_note' (📹)
+  let mediaHoldTimer = null;
+  let didHoldRecord = false;
+  let holdRecordStartTime = 0;
+
+  function updateInputButtons() {
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-msg-btn');
+    const mediaBtn = document.getElementById('chat-media-btn');
+    if (!input || !sendBtn || !mediaBtn) return;
+
+    const hasText = (input.value || '').trim().length > 0;
+    if (hasText) {
+      sendBtn.style.display = 'flex';
+      mediaBtn.style.display = 'none';
+    } else {
+      sendBtn.style.display = 'none';
+      mediaBtn.style.display = 'flex';
+    }
+  }
+
+  function updateMediaButtonIcon() {
+    const iconEl = document.getElementById('chat-media-btn-icon');
+    const btn = document.getElementById('chat-media-btn');
+    if (!iconEl || !btn) return;
+
+    if (mediaNoteMode === 'voice') {
+      iconEl.textContent = '🎙️';
+      btn.title = "Ovozli xabar yozish (Bosib turing) / Video rejimiga o'tish (Bosing)";
+    } else {
+      iconEl.textContent = '📹';
+      btn.title = "Dumaloq video yozish (Bosib turing) / Ovoz rejimiga o'tish (Bosing)";
+    }
+  }
+
+  function toggleMediaNoteMode() {
+    mediaNoteMode = (mediaNoteMode === 'voice' ? 'video_note' : 'voice');
+    updateMediaButtonIcon();
+    if (typeof App !== 'undefined' && App.showToast) {
+      const label = (mediaNoteMode === 'voice' ? "🎙️ Ovozli xabar rejimi" : "📹 Dumaloq video xabar rejimi");
+      App.showToast(label);
+    }
+  }
+
+  function setupMediaButtonListeners() {
+    const btn = document.getElementById('chat-media-btn');
+    if (!btn) return;
+
+    updateMediaButtonIcon();
+    updateInputButtons();
+
+    const onPointerDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      didHoldRecord = false;
+      holdRecordStartTime = Date.now();
+
+      mediaHoldTimer = setTimeout(() => {
+        didHoldRecord = true;
+        if (mediaNoteMode === 'voice') {
+          startVoiceRecording();
+        } else {
+          startRoundVideoRecording();
+        }
+      }, 280);
+    };
+
+    const onPointerUp = (e) => {
+      if (mediaHoldTimer) {
+        clearTimeout(mediaHoldTimer);
+        mediaHoldTimer = null;
+      }
+
+      if (!didHoldRecord) {
+        // Quick tap: switch mode between Voice (🎙️) and Video Note (📹)
+        toggleMediaNoteMode();
+      } else {
+        // Was held down: if held for > 1.8 seconds, finish & send
+        const duration = (Date.now() - holdRecordStartTime) / 1000;
+        if (duration >= 1.8) {
+          if (isVoiceRecording) {
+            finishAndSendVoiceRecording();
+          } else if (isRoundVideoRecording) {
+            stopAndSendRoundVideo();
+          }
+        }
+      }
+    };
+
+    const onPointerCancel = () => {
+      if (mediaHoldTimer) {
+        clearTimeout(mediaHoldTimer);
+        mediaHoldTimer = null;
+      }
+    };
+
+    btn.addEventListener('pointerdown', onPointerDown);
+    btn.addEventListener('pointerup', onPointerUp);
+    btn.addEventListener('pointercancel', onPointerCancel);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // -------------------------------------------------------------
+  // ROUND VIDEO NOTE CONTROLLER ("Dumaloq video xabar")
+  // -------------------------------------------------------------
+  let roundVideoStream = null;
+  let roundVideoRecorder = null;
+  let roundVideoChunks = [];
+  let roundVideoTimer = null;
+  let roundVideoSeconds = 0;
+  let isRoundVideoRecording = false;
+  let currentRoundFacing = 'user'; // front camera
+
+  async function startRoundVideoRecording() {
+    if (!activeConversation) {
+      App.showToast('Iltimos, avval biror suhbatni oching');
+      return;
+    }
+    if (isRoundVideoRecording) return;
+
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(true);
+    }
+
+    // Silence any playing media
+    document.querySelectorAll('audio, video').forEach(el => {
+      try { if (!el.paused) el.pause(); } catch (_) {}
+    });
+
+    const overlay = document.getElementById('round-video-recording-overlay');
+    const liveFeed = document.getElementById('round-video-live-feed');
+    const timerEl = document.getElementById('round-video-timer');
+
+    try {
+      roundVideoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: currentRoundFacing,
+          width: { ideal: 480 },
+          height: { ideal: 480 },
+          aspectRatio: { ideal: 1 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true
+        }
+      });
+    } catch (err) {
+      console.warn('Advanced round video constraints failed, trying basic:', err);
+      try {
+        roundVideoStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+      } catch (fallbackErr) {
+        console.error('Camera/Microphone error:', fallbackErr);
+        App.showToast('Kamera yoki mikrofondan foydalanishga ruxsat berilmadi');
+        if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+          App.setMediaPickingActive(false);
+        }
+        return;
+      }
+    }
+
+    if (liveFeed) {
+      liveFeed.srcObject = roundVideoStream;
+      liveFeed.play().catch(() => {});
+    }
+
+    if (overlay) overlay.style.display = 'flex';
+
+    roundVideoChunks = [];
+    roundVideoSeconds = 0;
+    isRoundVideoRecording = true;
+
+    let mime = 'video/webm';
+    if (typeof MediaRecorder !== 'undefined') {
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        mime = 'video/webm;codecs=vp8,opus';
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        mime = 'video/webm';
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mime = 'video/mp4';
+      }
+    }
+
+    try {
+      roundVideoRecorder = new MediaRecorder(roundVideoStream, { mimeType: mime });
+    } catch (_) {
+      roundVideoRecorder = new MediaRecorder(roundVideoStream);
+    }
+
+    roundVideoRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        roundVideoChunks.push(e.data);
+      }
+    };
+
+    roundVideoRecorder.start(250);
+
+    if (timerEl) timerEl.textContent = '00:00 / 01:00';
+
+    clearInterval(roundVideoTimer);
+    roundVideoTimer = setInterval(() => {
+      roundVideoSeconds++;
+      const m = Math.floor(roundVideoSeconds / 60).toString().padStart(2, '0');
+      const s = (roundVideoSeconds % 60).toString().padStart(2, '0');
+      if (timerEl) timerEl.textContent = `${m}:${s} / 01:00`;
+
+      if (roundVideoSeconds >= 60) {
+        stopAndSendRoundVideo();
+      }
+    }, 1000);
+  }
+
+  async function flipRoundVideoCamera() {
+    currentRoundFacing = (currentRoundFacing === 'user' ? 'environment' : 'user');
+    const liveFeed = document.getElementById('round-video-live-feed');
+
+    if (roundVideoStream) {
+      roundVideoStream.getVideoTracks().forEach(t => t.stop());
+    }
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: currentRoundFacing,
+          width: { ideal: 480 },
+          height: { ideal: 480 }
+        }
+      });
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (roundVideoStream && newVideoTrack) {
+        roundVideoStream.addTrack(newVideoTrack);
+      }
+      if (liveFeed) {
+        liveFeed.srcObject = roundVideoStream;
+        liveFeed.style.transform = (currentRoundFacing === 'user') ? 'scaleX(-1)' : 'none';
+      }
+    } catch (e) {
+      console.warn('Flip camera error:', e);
+    }
+  }
+
+  function stopAndSendRoundVideo() {
+    if (!isRoundVideoRecording || !roundVideoRecorder) return;
+
+    if (roundVideoSeconds < 1) {
+      App.showToast('Video xabar juda qisqa');
+      cancelRoundVideo();
+      return;
+    }
+
+    isRoundVideoRecording = false;
+    clearInterval(roundVideoTimer);
+
+    const overlay = document.getElementById('round-video-recording-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    roundVideoRecorder.onstop = () => {
+      const mime = roundVideoRecorder.mimeType || 'video/webm';
+      const videoBlob = new Blob(roundVideoChunks, { type: mime });
+
+      if (roundVideoStream) {
+        roundVideoStream.getTracks().forEach(t => t.stop());
+        roundVideoStream = null;
+      }
+      roundVideoChunks = [];
+
+      const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+      const roundVideoFile = new File([videoBlob], `round_video_${Date.now()}.${ext}`, { type: mime });
+
+      uploadAndSendMedia(roundVideoFile, 'video_note');
+
+      if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+        setTimeout(() => App.setMediaPickingActive(false), 2000);
+      }
+    };
+
+    if (roundVideoRecorder.state !== 'inactive') {
+      roundVideoRecorder.stop();
+    }
+  }
+
+  function cancelRoundVideo() {
+    if (!isRoundVideoRecording) return;
+    isRoundVideoRecording = false;
+    clearInterval(roundVideoTimer);
+
+    const overlay = document.getElementById('round-video-recording-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    if (roundVideoRecorder && roundVideoRecorder.state !== 'inactive') {
+      roundVideoRecorder.stop();
+    }
+    if (roundVideoStream) {
+      roundVideoStream.getTracks().forEach(t => t.stop());
+      roundVideoStream = null;
+    }
+    roundVideoChunks = [];
+
+    if (typeof App !== 'undefined' && App.setMediaPickingActive) {
+      App.setMediaPickingActive(false);
+    }
+    App.showToast('Dumaloq video bekor qilindi');
+  }
+
+  function toggleRoundVideo(wrapper) {
+    if (!wrapper) return;
+    const video = wrapper.querySelector('video');
+    const playBtn = wrapper.querySelector('.round-video-play-btn');
+    if (!video) return;
+
+    if (video.paused) {
+      document.querySelectorAll('audio, video').forEach(m => {
+        if (m !== video && !m.paused) {
+          try { m.pause(); } catch (_) {}
+        }
+      });
+      video.muted = false;
+      video.play().then(() => {
+        if (playBtn) playBtn.style.opacity = '0';
+      }).catch(err => {
+        console.warn('Video play error:', err);
+      });
+    } else {
+      video.pause();
+      if (playBtn) playBtn.style.opacity = '1';
+    }
+  }
+
   // Connect to Socket.io with JWT authentication
   function connectSocket() {
     const token = Auth.getToken();
@@ -1132,9 +1441,14 @@ const Chat = (() => {
     // Load message history
     await loadMessages(convId);
 
-    // Focus input
+    // Focus input and reset buttons
     const input = document.getElementById('message-input');
-    if (input) input.focus();
+    if (input) {
+      input.value = '';
+      input.style.height = 'auto';
+      input.focus();
+    }
+    updateInputButtons();
   }
 
   // Restore active conversation if resuming from background / calculator / gallery
@@ -1205,6 +1519,7 @@ const Chat = (() => {
 
     input.value = '';
     input.style.height = 'auto';
+    updateInputButtons();
 
     if (socket && isTyping) {
       isTyping = false;
@@ -1261,7 +1576,10 @@ const Chat = (() => {
     const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'opus', 'flac'];
     const imageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'ico'];
 
-    if (source === 'file' || (!videoExts.includes(ext) && !audioExts.includes(ext) && !imageExts.includes(ext))) {
+    if (source === 'video_note' || source === 'round_video') {
+      determinedType = 'video_note';
+      source = 'video_note';
+    } else if (source === 'file' || (!videoExts.includes(ext) && !audioExts.includes(ext) && !imageExts.includes(ext))) {
       determinedType = 'file';
     } else if (file.type.startsWith('video') || videoExts.includes(ext)) {
       determinedType = 'video';
@@ -1275,8 +1593,12 @@ const Chat = (() => {
     formData.append('source', source);
     formData.append('mediaType', determinedType);
 
+    const uploadUrl = (typeof window.resolveMediaUrl === 'function')
+      ? window.resolveMediaUrl('/api/chat/upload')
+      : '/api/chat/upload';
+
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/chat/upload', true);
+    xhr.open('POST', uploadUrl, true);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
     xhr.upload.onprogress = (e) => {
@@ -1379,15 +1701,25 @@ const Chat = (() => {
 
     if (msg.mediaUrl) {
       const urlLower = (msg.mediaUrl || '').toLowerCase();
-      const isVoice = msg.mediaSource === 'voice' || msg.mediaType === 'audio' || urlLower.endsWith('.ogg') || urlLower.endsWith('.wav') || urlLower.endsWith('.mp3') || urlLower.endsWith('.m4a');
-      const isVideo = msg.mediaType === 'video' || urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.mov') || urlLower.endsWith('.mkv') || urlLower.endsWith('.3gp') || urlLower.endsWith('.m4v');
-      isFile = msg.mediaType === 'file' || (!isVoice && !isVideo && !urlLower.endsWith('.jpg') && !urlLower.endsWith('.jpeg') && !urlLower.endsWith('.png') && !urlLower.endsWith('.webp') && !urlLower.endsWith('.gif') && !urlLower.endsWith('.svg') && !urlLower.endsWith('.bmp') && !urlLower.endsWith('.ico'));
+      const isVideoNote = msg.mediaType === 'video_note' || msg.mediaSource === 'video_note';
+      const isVoice = !isVideoNote && (msg.mediaSource === 'voice' || msg.mediaType === 'audio' || urlLower.endsWith('.ogg') || urlLower.endsWith('.wav') || urlLower.endsWith('.mp3') || urlLower.endsWith('.m4a'));
+      const isVideo = !isVideoNote && (msg.mediaType === 'video' || urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.mov') || urlLower.endsWith('.mkv') || urlLower.endsWith('.3gp') || urlLower.endsWith('.m4v'));
+      isFile = !isVideoNote && (msg.mediaType === 'file' || (!isVoice && !isVideo && !urlLower.endsWith('.jpg') && !urlLower.endsWith('.jpeg') && !urlLower.endsWith('.png') && !urlLower.endsWith('.webp') && !urlLower.endsWith('.gif') && !urlLower.endsWith('.svg') && !urlLower.endsWith('.bmp') && !urlLower.endsWith('.ico')));
 
       const resolvedMediaUrl = (msg.mediaUrl && typeof window.resolveMediaUrl === 'function')
         ? window.resolveMediaUrl(msg.mediaUrl)
         : (msg.mediaUrl || '');
 
-      if (isVoice) {
+      if (isVideoNote) {
+        mediaHtml = `
+          <div class="msg-media-container round-video-bubble-box">
+            <div class="round-video-wrapper" onclick="if(window.Chat&&Chat.toggleRoundVideo)Chat.toggleRoundVideo(this)">
+              <video class="round-video-element" src="${resolvedMediaUrl}" playsinline loop preload="metadata" onplay="const p=this.parentElement.querySelector('.round-video-play-btn');if(p)p.style.opacity='0';" onpause="const p=this.parentElement.querySelector('.round-video-play-btn');if(p)p.style.opacity='1';"></video>
+              <div class="round-video-play-btn">▶</div>
+            </div>
+          </div>
+        `;
+      } else if (isVoice) {
         const badgeHtml = `
           <div class="media-source-tag voice">
             <span>🎙️</span>
@@ -1640,8 +1972,24 @@ const Chat = (() => {
     goBackToDashboard,
     openCameraActionSheet,
     closeCameraActionSheet,
-    triggerGalleryUpload,
-    triggerDocumentUpload,
+    openAttachmentMenu,
+    closeAttachmentMenu,
+    pickGallery,
+    pickDocument,
+    pickCameraPhoto,
+    pickCameraVideo,
+    triggerGalleryUpload: pickGallery,
+    triggerDocumentUpload: pickDocument,
+    toggleMediaNoteMode,
+    startVoiceRecording,
+    cancelVoiceRecording,
+    finishAndSendVoiceRecording,
+    startRoundVideoRecording,
+    stopAndSendRoundVideo,
+    cancelRoundVideo,
+    flipRoundVideoCamera,
+    toggleRoundVideo,
+    updateInputButtons,
     promptDeleteMessage,
     closeDeleteModal,
     confirmDeleteMessage,

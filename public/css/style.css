@@ -1280,13 +1280,14 @@ body.dark .msg-delete-btn {
 
 .message-bubble {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 18px;
+  padding: 8px 12px;
+  border-radius: 16px;
   position: relative;
-  font-size: 14.5px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.42;
   word-break: break-word;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  letter-spacing: -0.01em;
 }
 
 .message-row.outgoing .message-bubble {
@@ -1307,7 +1308,7 @@ body.dark .msg-delete-btn {
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 10.5px;
   opacity: 0.8;
 }
@@ -1324,51 +1325,123 @@ body.dark .msg-delete-btn {
   font-size: 11px;
 }
 
-/* Chat Input Bar */
+/* Telegram-Style Chat Input Bar */
 .chat-input-bar {
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--bg-card);
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
+  min-height: 54px;
+  box-sizing: border-box;
+}
+
+.chat-bar-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chat-bar-btn:active {
+  background: rgba(0, 0, 0, 0.08);
+  transform: scale(0.92);
+}
+
+.chat-bar-btn:hover {
+  color: var(--primary);
 }
 
 .chat-input {
   flex: 1;
-  padding: 12px 14px;
-  font-size: 15px;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 9px 14px;
+  font-size: 14px;
+  line-height: 1.4;
   border: 1.5px solid var(--border);
-  border-radius: var(--radius-full);
+  border-radius: 20px;
   background: var(--bg-main);
   color: var(--text-main);
   outline: none;
-  max-height: 120px;
   resize: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s;
 }
 
 .chat-input:focus {
   border-color: var(--primary);
 }
 
+.chat-right-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .send-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   background: var(--primary);
   border: none;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.1s;
+  transition: transform 0.12s ease, background 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
 }
 
 .send-btn:active {
+  transform: scale(0.9);
+}
+
+.chat-media-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.chat-media-btn:active {
+  background: rgba(0, 0, 0, 0.08);
   transform: scale(0.92);
+}
+
+.chat-media-btn.recording-active {
+  background: #ef4444;
+  color: white;
+  transform: scale(1.1);
+  animation: pulse-mic 1s infinite alternate;
 }
 
 /* Toast Notifications */
@@ -2055,4 +2128,296 @@ body.dark .message-row.incoming .msg-file-card {
 
 .btn-toggle-history:hover {
   text-decoration: underline;
+}
+
+/* ====================================================== */
+/* TELEGRAM-STYLE ATTACHMENT BOTTOM SHEET MODAL           */
+/* ====================================================== */
+.attachment-sheet {
+  max-width: 420px;
+  padding: 16px 20px 24px;
+  border-radius: 24px 24px 0 0;
+}
+
+.attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.attachment-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 10px;
+  border-radius: 16px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.attachment-item:active {
+  transform: scale(0.96);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--primary);
+}
+
+.attach-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.attach-icon-circle.gallery-circle {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.attach-icon-circle.doc-circle {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: white;
+}
+
+.attach-icon-circle.photo-circle {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: white;
+}
+
+.attach-icon-circle.video-circle {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.attach-item-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.attach-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ====================================================== */
+/* TELEGRAM-STYLE ROUND VIDEO NOTE ("Dumaloq video xabar") */
+/* ====================================================== */
+
+/* Round video bubble inside chat */
+.round-video-bubble-box {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 !important;
+  background: transparent !important;
+}
+
+.round-video-wrapper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  transform: translateZ(0);
+}
+
+.round-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.round-video-play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  padding-left: 3px;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.round-video-wrapper:active .round-video-play-btn {
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+/* Round Video Fullscreen Recording Viewfinder */
+.round-video-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn 0.2s ease;
+}
+
+.round-video-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.round-video-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 7px 18px;
+  border-radius: 20px;
+}
+
+.round-recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse-dot 1s infinite alternate;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+
+.round-video-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.round-video-timer {
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: monospace;
+  color: #38bdf8;
+}
+
+.round-video-viewfinder-wrap {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  margin-bottom: 32px;
+}
+
+.round-video-viewfinder {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  border: 4px solid #10b981;
+  box-shadow: 0 0 28px rgba(16, 185, 129, 0.65);
+  background: #000;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  transform: translateZ(0);
+}
+
+.round-video-viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.round-video-pulse-ring {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  border: 2px dashed rgba(16, 185, 129, 0.7);
+  animation: rotate-ring 10s linear infinite;
+  pointer-events: none;
+}
+
+.round-video-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.round-video-action-btn {
+  padding: 12px 20px;
+  border-radius: 26px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.round-video-action-btn:active {
+  transform: scale(0.93);
+}
+
+.round-video-action-btn.flip-btn {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: 50%;
+}
+
+.round-video-action-btn.cancel-btn {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.round-video-action-btn.send-btn {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45);
+}
 }

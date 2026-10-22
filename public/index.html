@@ -46,6 +46,15 @@
         return rawFetch.call(this, url, opts);
       };
 
+      // Automatically route all XMLHttpRequest uploads and calls to API_BASE_URL
+      const rawXhrOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+        if (typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('/uploads/'))) {
+          url = (window.API_BASE_URL || 'https://wordslive.onrender.com').replace(/\/+$/, '') + url;
+        }
+        return rawXhrOpen.apply(this, arguments);
+      };
+
       // Ensure any stale service worker caches from previous versions are completely evicted
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -392,8 +401,7 @@
         <span id="upload-progress-text">Fayl yuklanmoqda (0%)...</span>
       </div>
 
-      <!-- Message Input Bar with Gallery & Live Camera Buttons -->
-      <!-- Message Input Bar with Gallery, Camera & Voice Record Buttons -->
+      <!-- Message Input Bar (Telegram-Style Clean Layout) -->
       <div class="chat-input-bar" id="chat-normal-input-bar">
         <!-- Hidden file inputs -->
         <!-- Dedicated Gallery input (photos & videos up to 200MB) -->
@@ -405,21 +413,21 @@
         <!-- Dedicated Pure Camera Video input (forces native camcorder video mode, zero gallery) -->
         <input type="file" id="media-camera-video-input" accept="video/*" capture="camcorder" style="display: none;">
 
-        <button id="btn-open-gallery" class="icon-btn" onclick="if(window.Chat&&Chat.triggerGalleryUpload)Chat.triggerGalleryUpload()" title="Galereyadan rasm yoki video (200MB gacha)" style="color: var(--primary); font-size: 20px; padding: 6px;">
+        <!-- Single Paperclip Attachment Button on the Left -->
+        <button id="btn-chat-attach" class="chat-bar-btn" onclick="if(window.Chat&&Chat.openAttachmentMenu)Chat.openAttachmentMenu()" title="Fayl yoki media biriktirish">
           📎
         </button>
-        <button id="btn-open-file" class="icon-btn" onclick="if(window.Chat&&Chat.triggerDocumentUpload)Chat.triggerDocumentUpload()" title="Fayl yoki hujjat yuborish (PDF, Word, Zip, APK, 200MB gacha)" style="color: #8b5cf6; font-size: 20px; padding: 6px;">
-          📁
-        </button>
-        <button id="btn-open-camera" class="icon-btn" onclick="if(window.Chat&&Chat.openCameraActionSheet)Chat.openCameraActionSheet()" title="Kameraga olish (Foto/Video)" style="color: #ef4444; font-size: 20px; padding: 6px;">
-          📷
-        </button>
-        <button id="btn-voice-record" class="icon-btn" title="Ovozli xabar yozish" style="color: #10b981; font-size: 20px; padding: 6px;">
-          🎙️
-        </button>
 
+        <!-- Dynamic Message Input (Flex 1 full width) -->
         <textarea id="message-input" class="chat-input" placeholder="Xabar yozing..." rows="1"></textarea>
-        <button id="send-msg-btn" class="send-btn" title="Yuborish">➤</button>
+
+        <!-- Right Side Action: Send (➤) or Media Note (🎙️ / 📹) -->
+        <div class="chat-right-actions">
+          <button id="send-msg-btn" class="send-btn" title="Yuborish" style="display: none;">➤</button>
+          <button id="chat-media-btn" class="chat-media-btn" title="Ovozli yoki dumaloq video xabar (Bosib turing)">
+            <span id="chat-media-btn-icon">🎙️</span>
+          </button>
+        </div>
       </div>
 
       <!-- Live Voice Recording Bar (Active during recording) -->
@@ -699,6 +707,39 @@
     </div>
   </div>
 
+  <!-- Telegram-Style Attachment Bottom Sheet Modal (Opens on 📎) -->
+  <div class="modal-overlay" id="attachment-menu-modal" onclick="if(event.target===this){if(window.Chat&&Chat.closeAttachmentMenu){Chat.closeAttachmentMenu();}else{this.classList.remove('open');}}">
+    <div class="modal-sheet attachment-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">
+        <span>📎 Fayl yoki Media biriktirish</span>
+        <button id="close-attachment-menu-btn" class="icon-btn" onclick="if(window.Chat&&Chat.closeAttachmentMenu){Chat.closeAttachmentMenu();}else{const m=document.getElementById('attachment-menu-modal');if(m)m.classList.remove('open');}" style="font-size: 16px;">✕</button>
+      </div>
+      <div class="attachment-grid">
+        <div class="attachment-item" id="attach-opt-gallery" onclick="if(window.Chat&&Chat.pickGallery)Chat.pickGallery()">
+          <div class="attach-icon-circle gallery-circle">🖼️</div>
+          <div class="attach-item-title">Galereya</div>
+          <div class="attach-item-sub">Foto va video (200MB)</div>
+        </div>
+        <div class="attachment-item" id="attach-opt-doc" onclick="if(window.Chat&&Chat.pickDocument)Chat.pickDocument()">
+          <div class="attach-icon-circle doc-circle">📄</div>
+          <div class="attach-item-title">Hujjat / Fayl</div>
+          <div class="attach-item-sub">PDF, Word, Zip, APK...</div>
+        </div>
+        <div class="attachment-item" id="attach-opt-photo" onclick="if(window.Chat&&Chat.pickCameraPhoto)Chat.pickCameraPhoto()">
+          <div class="attach-icon-circle photo-circle">📷</div>
+          <div class="attach-item-title">Kamera (Rasm)</div>
+          <div class="attach-item-sub">Suratga olish</div>
+        </div>
+        <div class="attachment-item" id="attach-opt-video" onclick="if(window.Chat&&Chat.pickCameraVideo)Chat.pickCameraVideo()">
+          <div class="attach-icon-circle video-circle">🎥</div>
+          <div class="attach-item-title">Kamera (Video)</div>
+          <div class="attach-item-sub">Videoga olish</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Camera Choice Action Sheet (Zero Gallery, Pure Camera Mode) -->
   <div class="modal-overlay" id="camera-action-modal" onclick="if(event.target===this){if(window.Chat&&Chat.closeCameraActionSheet){Chat.closeCameraActionSheet();}else{this.classList.remove('open');}}">
     <div class="modal-sheet" style="padding-bottom: 24px;">
@@ -817,13 +858,46 @@
     </div>
   </div>
 
+  <!-- Telegram-Style Round Video Note ("Dumaloq video xabar") Recording Overlay -->
+  <div class="round-video-overlay" id="round-video-recording-overlay" style="display: none;">
+    <div class="round-video-card">
+      <div class="round-video-header">
+        <div class="round-recording-dot"></div>
+        <span class="round-video-title">Dumaloq video xabar</span>
+        <span id="round-video-timer" class="round-video-timer">00:00 / 01:00</span>
+      </div>
+
+      <!-- Viewfinder Circle -->
+      <div class="round-video-viewfinder-wrap">
+        <div class="round-video-viewfinder">
+          <video id="round-video-live-feed" autoplay playsinline muted></video>
+        </div>
+        <div class="round-video-pulse-ring"></div>
+      </div>
+
+      <!-- Controls below circle -->
+      <div class="round-video-controls">
+        <button type="button" id="btn-flip-round-video" class="round-video-action-btn flip-btn" onclick="if(window.Chat&&Chat.flipRoundVideoCamera)Chat.flipRoundVideoCamera()" title="Kamerani almashtirish">
+          🔄
+        </button>
+        <button type="button" id="btn-cancel-round-video" class="round-video-action-btn cancel-btn" onclick="if(window.Chat&&Chat.cancelRoundVideo)Chat.cancelRoundVideo()" title="Bekor qilish">
+          ✕ Bekor qilish
+        </button>
+        <button type="button" id="btn-send-round-video" class="round-video-action-btn send-btn" onclick="if(window.Chat&&Chat.stopAndSendRoundVideo)Chat.stopAndSendRoundVideo()" title="Yuborish">
+          <span>Yuborish</span>
+          <span>➤</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast notification container -->
   <div id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/js/dictionary.js?v=3.1.0"></script>
-  <script src="/js/auth.js?v=3.1.0"></script>
-  <script src="/js/chat.js?v=3.1.0"></script>
-  <script src="/js/app.js?v=3.1.0"></script>
+  <script src="/js/dictionary.js?v=3.4.0"></script>
+  <script src="/js/auth.js?v=3.4.0"></script>
+  <script src="/js/chat.js?v=3.4.0"></script>
+  <script src="/js/app.js?v=3.4.0"></script>
 </body>
 </html>
