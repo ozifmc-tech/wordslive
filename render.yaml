@@ -27,3 +27,5 @@ services:
         value: htmabwuerlwbgvii
       - key: SMTP_FROM
         value: WordsLive <ozif.mc@gmail.com>
+      - key: RESEND_API_KEY
+        sync: false
