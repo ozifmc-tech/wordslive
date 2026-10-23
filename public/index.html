@@ -210,7 +210,8 @@
               <input type="tel" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="5">
             </div>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+          <div id="otp-instant-helper" style="display: none; margin-bottom: 12px;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 12px;">
             <span id="otp-timer-text" style="color: var(--text-muted);">Qolgan vaqt: 10:00</span>
             <button id="otp-resend-btn" style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer;">Qayta yuborish</button>
           </div>
@@ -218,7 +219,7 @@
             <span>Kodni tasdiqlash</span>
             <span>✓</span>
           </button>
-          <button class="btn-secondary" id="auth-back-to-email-btn">Emailni o'zgartirish</button>
+          <button class="btn-secondary" id="auth-back-to-email-btn" style="margin-top: 8px;">Emailni o'zgartirish</button>
         </div>
 
         <!-- Mode A, Step 3: Profile Registration (Ism & Noyob Nik & Parol) -->
@@ -895,9 +896,9 @@
   <div id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/js/dictionary.js?v=3.4.1"></script>
-  <script src="/js/auth.js?v=3.4.1"></script>
-  <script src="/js/chat.js?v=3.4.1"></script>
-  <script src="/js/app.js?v=3.4.1"></script>
+  <script src="/js/dictionary.js?v=3.4.2"></script>
+  <script src="/js/auth.js?v=3.4.2"></script>
+  <script src="/js/chat.js?v=3.4.2"></script>
+  <script src="/js/app.js?v=3.4.2"></script>
 </body>
 </html>

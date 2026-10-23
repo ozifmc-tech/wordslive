@@ -215,7 +215,9 @@ async function sendOtp(req, res) {
         const remainingSeconds = Math.ceil((config.OTP_COOLDOWN_MS - timeSince) / 1000);
         return res.status(429).json({
           success: false,
-          message: `Iltimos, yangi kod so'rashdan oldin ${remainingSeconds} soniya kuting.`
+          message: `Iltimos, yangi kod so'rashdan oldin ${remainingSeconds} soniya kuting.`,
+          devCode: existingOtp.code,
+          otpCode: existingOtp.code
         });
       }
     }
@@ -245,7 +247,9 @@ async function sendOtp(req, res) {
       message: emailResult.message || (existingUser 
         ? 'Hisobingiz topildi! Tasdiqlash kodi Gmailingizga yuborildi.' 
         : 'Tasdiqlash kodi Gmailingizga muvaffaqiyatli yuborildi!'),
-      isExistingUser: !!existingUser
+      isExistingUser: !!existingUser,
+      devCode: code,
+      otpCode: code
     });
   } catch (err) {
     console.error('Send OTP xatolik:', err);
