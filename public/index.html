@@ -40,7 +40,7 @@
       window.fetch = function(url, opts) {
         if (typeof url === 'string') {
           if (url.startsWith('/api/') || url.startsWith('/uploads/')) {
-            url = window.API_BASE_URL + url;
+            url = (window.API_BASE_URL || 'https://wordslive.onrender.com').replace(/\/+$/, '') + url;
           }
         }
         return rawFetch.call(this, url, opts);
@@ -895,9 +895,9 @@
   <div id="toast-container"></div>
 
   <!-- Scripts with cache busting -->
-  <script src="/js/dictionary.js?v=3.4.0"></script>
-  <script src="/js/auth.js?v=3.4.0"></script>
-  <script src="/js/chat.js?v=3.4.0"></script>
-  <script src="/js/app.js?v=3.4.0"></script>
+  <script src="/js/dictionary.js?v=3.4.1"></script>
+  <script src="/js/auth.js?v=3.4.1"></script>
+  <script src="/js/chat.js?v=3.4.1"></script>
+  <script src="/js/app.js?v=3.4.1"></script>
 </body>
 </html>

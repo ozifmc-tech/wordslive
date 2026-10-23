@@ -1175,8 +1175,12 @@ const Chat = (() => {
       if (activeConversation && msg.conversationId === activeConversation.id) {
         const existing = document.getElementById(`msg-row-${msg.id}`);
         if (!existing) {
-          appendMessageBubble(msg);
-          scrollToBottom();
+          try {
+            appendMessageBubble(msg);
+            scrollToBottom();
+          } catch (e) {
+            console.error('Error appending new message:', e);
+          }
         }
 
         // Only the receiver marks incoming message as read
@@ -1534,11 +1538,20 @@ const Chat = (() => {
         }
 
         container.innerHTML = '';
-        data.messages.forEach(msg => appendMessageBubble(msg));
+        data.messages.forEach(msg => {
+          try {
+            appendMessageBubble(msg);
+          } catch (renderErr) {
+            console.error('Message render error:', renderErr);
+          }
+        });
         scrollToBottom();
+      } else {
+        container.innerHTML = `<div style="color: red; text-align: center; padding: 20px;">${escapeHtml(data.message || 'Xabarlarni yuklab bo\'lmadi')}</div>`;
       }
     } catch (err) {
-      container.innerHTML = '<div style="color: red; text-align: center;">Xabarlarni yuklab bo\'lmadi</div>';
+      console.error('loadMessages error:', err);
+      container.innerHTML = '<div style="color: red; text-align: center; padding: 20px;">Xabarlarni yuklab bo\'lmadi</div>';
     }
   }
 
@@ -1731,10 +1744,10 @@ const Chat = (() => {
     let mediaHtml = '';
     let isFile = false;
     let fileName = '';
+    const isVideoNote = Boolean(msg.mediaUrl && (msg.mediaType === 'video_note' || msg.mediaSource === 'video_note'));
 
     if (msg.mediaUrl) {
       const urlLower = (msg.mediaUrl || '').toLowerCase();
-      const isVideoNote = msg.mediaType === 'video_note' || msg.mediaSource === 'video_note';
       const isVoice = !isVideoNote && (msg.mediaSource === 'voice' || msg.mediaType === 'audio' || urlLower.endsWith('.ogg') || urlLower.endsWith('.wav') || urlLower.endsWith('.mp3') || urlLower.endsWith('.m4a'));
       const isVideo = !isVideoNote && (msg.mediaType === 'video' || urlLower.endsWith('.mp4') || urlLower.endsWith('.webm') || urlLower.endsWith('.mov') || urlLower.endsWith('.mkv') || urlLower.endsWith('.3gp') || urlLower.endsWith('.m4v'));
       isFile = !isVideoNote && (msg.mediaType === 'file' || (!isVoice && !isVideo && !urlLower.endsWith('.jpg') && !urlLower.endsWith('.jpeg') && !urlLower.endsWith('.png') && !urlLower.endsWith('.webp') && !urlLower.endsWith('.gif') && !urlLower.endsWith('.svg') && !urlLower.endsWith('.bmp') && !urlLower.endsWith('.ico')));
@@ -1835,8 +1848,8 @@ const Chat = (() => {
     row.id = `msg-row-${msg.id}`;
     row.className = `message-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
 
-    const isFileWithSameText = isFile && msg.text && (msg.text.trim() === fileName.trim() || msg.text.trim() === (msg.mediaUrl.split('/').pop() || ''));
-    const showText = msg.text && !isFileWithSameText;
+    const isFileWithSameText = isFile && msg.text && (msg.text.trim() === fileName.trim() || msg.text.trim() === ((msg.mediaUrl || '').split('/').pop() || ''));
+    const showText = Boolean(msg.text && !isFileWithSameText);
     const isPureVideoNote = isVideoNote && !showText;
 
     row.innerHTML = `
@@ -1881,8 +1894,9 @@ const Chat = (() => {
   }
 
   function escapeHtml(str) {
+    if (!str && str !== 0) return '';
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = String(str);
     return div.innerHTML;
   }
 
