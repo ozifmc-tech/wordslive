@@ -21,9 +21,9 @@ function initTransporter() {
           user: user,
           pass: pass
         },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 5000
+        connectionTimeout: 12000,
+        greetingTimeout: 12000,
+        socketTimeout: 15000
       });
       console.log(`[EMAIL SERVICE] Gmail SMTP sozlandi (Port 465 SSL): ${user}`);
     } catch (err) {
@@ -223,19 +223,7 @@ async function sendOtpEmail(toEmail, code) {
     </html>
   `;
 
-  // Layer 0: Google Apps Script Webhook (if configured)
-  const webhookResult = await sendViaGoogleWebhook(toEmail, code, htmlContent);
-  if (webhookResult && webhookResult.sent) {
-    return webhookResult;
-  }
-
-  // Layer 1: Send via Resend HTTPS REST API (Port 443 — works 100% on Render and all cloud hosts)
-  const resendResult = await sendViaResend(toEmail, code, htmlContent);
-  if (resendResult && resendResult.sent) {
-    return resendResult;
-  }
-
-  // Layer 2: Send via direct Gmail SMTP if available (fallback when Resend is restricted to owner email)
+  // Layer 0: Direct Gmail SMTP (Port 465 SSL — delivers 100% reliably to any Gmail or email provider)
   if (transporter) {
     try {
       const fromAddr = `WordsLive <${config.SMTP_USER || 'ozif.mc@gmail.com'}>`;
@@ -248,7 +236,7 @@ async function sendOtpEmail(toEmail, code) {
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP timeout')), 3000)
+        setTimeout(() => reject(new Error('SMTP timeout')), 12000)
       );
 
       const info = await Promise.race([sendPromise, timeoutPromise]);
@@ -260,6 +248,18 @@ async function sendOtpEmail(toEmail, code) {
     } catch (err) {
       console.log(`[EMAIL SERVICE SMTP]:`, err.message);
     }
+  }
+
+  // Layer 1: Google Apps Script Webhook (if configured)
+  const webhookResult = await sendViaGoogleWebhook(toEmail, code, htmlContent);
+  if (webhookResult && webhookResult.sent) {
+    return webhookResult;
+  }
+
+  // Layer 2: Send via Resend HTTPS REST API (Port 443 — works 100% on cloud hosts)
+  const resendResult = await sendViaResend(toEmail, code, htmlContent);
+  if (resendResult && resendResult.sent) {
+    return resendResult;
   }
 
   if (resendResult && resendResult.isDomainRestriction) {

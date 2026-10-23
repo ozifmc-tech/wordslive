@@ -533,26 +533,15 @@ const Auth = (() => {
       if (tabOtp) tabOtp.classList.add('active');
       if (tabPwd) tabPwd.classList.remove('active');
 
-      const cachedCode = sessionStorage.getItem('wisdom_last_otp') || localStorage.getItem('wisdom_last_otp');
       const helper = document.getElementById('otp-instant-helper');
-      if (cachedCode && cachedCode.length === 6) {
-        const digits = document.querySelectorAll('.otp-digit');
-        let allEmpty = true;
-        digits.forEach(d => { if (d.value) allEmpty = false; });
-        if (allEmpty) {
-          digits.forEach((d, i) => { d.value = cachedCode[i] || ''; });
-        }
-        if (helper) {
-          helper.style.display = 'block';
-          helper.innerHTML = `
-            <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10b981; border-radius: 12px; padding: 10px 14px; text-align: center;">
-              <div style="font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">⚡ Tasdiqlash kodi avtomatik kiritildi:</div>
-              <div style="font-size: 24px; font-weight: 800; letter-spacing: 6px; color: #10b981; font-family: monospace;">${cachedCode}</div>
-              <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">Tugmani bosib tasdiqlang:</div>
-            </div>
-          `;
-        }
+      if (helper) {
+        helper.style.display = 'none';
+        helper.innerHTML = '';
       }
+      setTimeout(() => {
+        const firstDigit = document.querySelector('.otp-digit');
+        if (firstDigit) firstDigit.focus();
+      }, 100);
     }
     if (stepName === 'profile' && stepProfile) {
       stepProfile.style.display = 'flex';
@@ -781,45 +770,26 @@ const Auth = (() => {
       localStorage.setItem('wisdom_pending_step', 'otp');
       localStorage.setItem('wisdom_otp_expires', (Date.now() + 600 * 1000).toString());
 
-      const receivedCode = (data.otpCode || data.devCode || '').toString().trim();
-      if (receivedCode && receivedCode.length === 6) {
-        sessionStorage.setItem('wisdom_last_otp', receivedCode);
-        localStorage.setItem('wisdom_last_otp', receivedCode);
-      }
-
       showStep('otp');
       startOtpTimer(600);
 
       const helper = document.getElementById('otp-instant-helper');
-      if (receivedCode && receivedCode.length === 6) {
-        const digits = document.querySelectorAll('.otp-digit');
-        if (digits && digits.length === 6) {
-          for (let i = 0; i < 6; i++) {
-            digits[i].value = receivedCode[i] || '';
-          }
-        }
-        if (helper) {
-          helper.style.display = 'block';
-          helper.innerHTML = `
-            <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10b981; border-radius: 12px; padding: 10px 14px; text-align: center;">
-              <div style="font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 4px;">⚡ Tasdiqlash kodi avtomatik kiritildi:</div>
-              <div style="font-size: 24px; font-weight: 800; letter-spacing: 6px; color: #10b981; font-family: monospace;">${receivedCode}</div>
-              <div style="font-size: 11.5px; color: #64748b; margin-top: 4px;">Tugmani bosib tasdiqlang:</div>
-            </div>
-          `;
-        }
-        const verifyBtn = document.getElementById('auth-verify-otp-btn');
-        if (verifyBtn) verifyBtn.focus();
-      } else {
-        if (helper) {
-          helper.style.display = 'none';
-          helper.innerHTML = '';
-        }
-        const firstDigit = document.querySelector('.otp-digit');
-        if (firstDigit) firstDigit.focus();
+      if (helper) {
+        helper.style.display = 'none';
+        helper.innerHTML = '';
       }
 
-      App.showToast(data.message || 'Tasdiqlash kodi tayyorlandi!');
+      const digits = document.querySelectorAll('.otp-digit');
+      if (digits) {
+        digits.forEach(d => { d.value = ''; });
+      }
+
+      setTimeout(() => {
+        const firstDigit = document.querySelector('.otp-digit');
+        if (firstDigit) firstDigit.focus();
+      }, 150);
+
+      App.showToast(data.message || 'Tasdiqlash kodi Gmailingizga yuborildi. Pochtani tekshiring!');
 
     } catch (err) {
       if (err && err.name === 'AbortError') {

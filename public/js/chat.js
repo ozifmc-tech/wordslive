@@ -851,10 +851,58 @@ const Chat = (() => {
     updateMediaButtonIcon();
     updateInputButtons();
 
+    const onGlobalPointerUp = (e) => {
+      window.removeEventListener('pointerup', onGlobalPointerUp);
+      window.removeEventListener('pointercancel', onGlobalPointerCancel);
+
+      if (mediaHoldTimer) {
+        clearTimeout(mediaHoldTimer);
+        mediaHoldTimer = null;
+      }
+
+      if (!didHoldRecord) {
+        // Quick tap: switch mode between Voice (🎙️) and Video Note (📹)
+        toggleMediaNoteMode();
+      } else {
+        // Was held down: if held for >= 0.8 seconds, finish & send
+        const duration = (Date.now() - holdRecordStartTime) / 1000;
+        if (duration >= 0.8) {
+          if (isVoiceRecording) {
+            finishAndSendVoiceRecording();
+          } else if (isRoundVideoRecording) {
+            stopAndSendRoundVideo();
+          }
+        } else {
+          // Held too briefly -> cancel safely
+          if (isVoiceRecording) {
+            cancelVoiceRecording();
+          } else if (isRoundVideoRecording) {
+            cancelRoundVideo();
+          }
+          if (typeof App !== 'undefined' && App.showToast) {
+            App.showToast("Xabar yozish uchun tugmani bosib turing");
+          }
+        }
+      }
+    };
+
+    const onGlobalPointerCancel = () => {
+      window.removeEventListener('pointerup', onGlobalPointerUp);
+      window.removeEventListener('pointercancel', onGlobalPointerCancel);
+
+      if (mediaHoldTimer) {
+        clearTimeout(mediaHoldTimer);
+        mediaHoldTimer = null;
+      }
+    };
+
     const onPointerDown = (e) => {
       if (e.button !== undefined && e.button !== 0) return;
       didHoldRecord = false;
       holdRecordStartTime = Date.now();
+
+      window.addEventListener('pointerup', onGlobalPointerUp);
+      window.addEventListener('pointercancel', onGlobalPointerCancel);
 
       mediaHoldTimer = setTimeout(() => {
         didHoldRecord = true;
@@ -866,38 +914,7 @@ const Chat = (() => {
       }, 280);
     };
 
-    const onPointerUp = (e) => {
-      if (mediaHoldTimer) {
-        clearTimeout(mediaHoldTimer);
-        mediaHoldTimer = null;
-      }
-
-      if (!didHoldRecord) {
-        // Quick tap: switch mode between Voice (🎙️) and Video Note (📹)
-        toggleMediaNoteMode();
-      } else {
-        // Was held down: if held for > 1.8 seconds, finish & send
-        const duration = (Date.now() - holdRecordStartTime) / 1000;
-        if (duration >= 1.8) {
-          if (isVoiceRecording) {
-            finishAndSendVoiceRecording();
-          } else if (isRoundVideoRecording) {
-            stopAndSendRoundVideo();
-          }
-        }
-      }
-    };
-
-    const onPointerCancel = () => {
-      if (mediaHoldTimer) {
-        clearTimeout(mediaHoldTimer);
-        mediaHoldTimer = null;
-      }
-    };
-
     btn.addEventListener('pointerdown', onPointerDown);
-    btn.addEventListener('pointerup', onPointerUp);
-    btn.addEventListener('pointercancel', onPointerCancel);
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
@@ -1738,7 +1755,7 @@ const Chat = (() => {
     }
 
     const myUser = Auth.getUser();
-    const isOutgoing = myUser && msg.senderId === myUser.id;
+    const isOutgoing = Boolean(myUser && String(msg.senderId) === String(myUser.id));
     const timeFormatted = formatTime(msg.createdAt);
 
     let mediaHtml = '';
@@ -1766,16 +1783,23 @@ const Chat = (() => {
           </div>
         `;
       } else if (isVoice) {
-        const badgeHtml = `
-          <div class="media-source-tag voice">
-            <span>🎙️</span>
-            <span>Ovozli xabar</span>
-          </div>
-        `;
         mediaHtml = `
-          <div class="msg-media-container" style="padding: 4px 2px;">
-            ${badgeHtml}
-            <audio class="msg-audio-player" src="${resolvedMediaUrl}" controls playsinline preload="metadata"></audio>
+          <div class="msg-media-container" style="padding: 2px 0;">
+            <div class="custom-voice-player" id="voice-player-${msg.id}" data-msg-id="${msg.id}" data-url="${resolvedMediaUrl}">
+              <button type="button" class="voice-play-btn" onclick="if(window.Chat&&Chat.toggleVoicePlay)Chat.toggleVoicePlay(${msg.id}, this)" title="Ovozli xabarni tinglash">
+                <span class="voice-play-icon">▶</span>
+              </button>
+              <div class="voice-body" onclick="if(window.Chat&&Chat.seekVoiceProgress)Chat.seekVoiceProgress(${msg.id}, event, this)">
+                <div class="voice-wave-container">
+                  ${renderWaveBars()}
+                </div>
+                <div class="voice-time-row">
+                  <span class="voice-current-time">0:00</span>
+                  <span class="voice-total-time">--:--</span>
+                </div>
+              </div>
+              <audio class="voice-hidden-audio" src="${resolvedMediaUrl}" preload="metadata" onloadedmetadata="if(window.Chat&&Chat.initVoiceDuration)Chat.initVoiceDuration(${msg.id}, this)" ontimeupdate="if(window.Chat&&Chat.updateVoiceProgress)Chat.updateVoiceProgress(${msg.id}, this)" onended="if(window.Chat&&Chat.resetVoicePlayer)Chat.resetVoicePlayer(${msg.id}, this)" playsinline style="display:none;"></audio>
+            </div>
           </div>
         `;
       } else if (isVideo) {
@@ -1809,7 +1833,11 @@ const Chat = (() => {
         else if (['txt', 'json', 'xml', 'md'].includes(ext)) fileIcon = '📝';
 
         const sizeStr = formatFileSize(msg.mediaSize);
-        const rawDownloadPath = msg.mediaUrl.startsWith('/uploads/') ? '/api/chat/download/' + msg.mediaUrl.replace('/uploads/', '') + '?name=' + encodeURIComponent(fileName) : msg.mediaUrl;
+        const userToken = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : '';
+        const tokenQuery = userToken ? `&token=${encodeURIComponent(userToken)}` : '';
+        const rawDownloadPath = msg.mediaUrl.startsWith('/uploads/') 
+          ? `/api/chat/download/${msg.mediaUrl.replace('/uploads/', '')}?name=${encodeURIComponent(fileName)}${tokenQuery}`
+          : msg.mediaUrl;
         const secureDownloadUrl = (typeof window.resolveMediaUrl === 'function') ? window.resolveMediaUrl(rawDownloadPath) : rawDownloadPath;
 
         mediaHtml = `
@@ -1876,6 +1904,107 @@ const Chat = (() => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function formatSeconds(sec) {
+    if (!sec || isNaN(sec) || !isFinite(sec)) return '0:00';
+    const total = Math.floor(sec);
+    const m = Math.floor(total / 60);
+    const s = (total % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function renderWaveBars() {
+    const heights = [30, 55, 35, 75, 95, 60, 40, 85, 70, 35, 55, 80, 90, 45, 65, 40, 75, 55, 35, 70, 45, 25];
+    return heights.map((h, i) => `<div class="voice-wave-bar" data-idx="${i}" style="height: ${h}%;"></div>`).join('');
+  }
+
+  function toggleVoicePlay(msgId, btn) {
+    const player = document.getElementById(`voice-player-${msgId}`);
+    if (!player) return;
+    const audio = player.querySelector('.voice-hidden-audio');
+    if (!audio) return;
+
+    if (audio.paused) {
+      document.querySelectorAll('audio, video').forEach(el => {
+        if (el !== audio && !el.paused) {
+          try { el.pause(); } catch (_) {}
+        }
+      });
+      document.querySelectorAll('.custom-voice-player').forEach(p => {
+        if (p !== player) {
+          const b = p.querySelector('.voice-play-icon');
+          if (b) b.textContent = '▶';
+        }
+      });
+
+      audio.play().then(() => {
+        const icon = btn.querySelector('.voice-play-icon');
+        if (icon) icon.textContent = '⏸';
+      }).catch(err => {
+        console.warn('Voice play error:', err);
+      });
+    } else {
+      audio.pause();
+      const icon = btn.querySelector('.voice-play-icon');
+      if (icon) icon.textContent = '▶';
+    }
+  }
+
+  function updateVoiceProgress(msgId, audio) {
+    const player = document.getElementById(`voice-player-${msgId}`);
+    if (!player || !audio) return;
+
+    const currentEl = player.querySelector('.voice-current-time');
+    if (currentEl) {
+      currentEl.textContent = formatSeconds(audio.currentTime);
+    }
+
+    const duration = audio.duration;
+    if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
+      const pct = Math.max(0, Math.min(1, audio.currentTime / duration));
+      const bars = player.querySelectorAll('.voice-wave-bar');
+      const activeIdx = Math.floor(pct * bars.length);
+      bars.forEach((bar, idx) => {
+        if (idx <= activeIdx) {
+          bar.classList.add('played');
+        } else {
+          bar.classList.remove('played');
+        }
+      });
+    }
+  }
+
+  function initVoiceDuration(msgId, audio) {
+    const player = document.getElementById(`voice-player-${msgId}`);
+    if (!player || !audio) return;
+    const totalEl = player.querySelector('.voice-total-time');
+    if (totalEl && audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+      totalEl.textContent = formatSeconds(audio.duration);
+    }
+  }
+
+  function resetVoicePlayer(msgId, audio) {
+    const player = document.getElementById(`voice-player-${msgId}`);
+    if (!player) return;
+    const icon = player.querySelector('.voice-play-icon');
+    if (icon) icon.textContent = '▶';
+    const currentEl = player.querySelector('.voice-current-time');
+    if (currentEl) currentEl.textContent = '0:00';
+    player.querySelectorAll('.voice-wave-bar').forEach(b => b.classList.remove('played'));
+  }
+
+  function seekVoiceProgress(msgId, e, bodyEl) {
+    const player = document.getElementById(`voice-player-${msgId}`);
+    if (!player) return;
+    const audio = player.querySelector('.voice-hidden-audio');
+    if (!audio || !audio.duration || isNaN(audio.duration)) return;
+
+    const rect = bodyEl.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+    audio.currentTime = pct * audio.duration;
+    updateVoiceProgress(msgId, audio);
   }
 
   function scrollToBottom() {
@@ -2042,7 +2171,12 @@ const Chat = (() => {
     promptDeleteMessage,
     closeDeleteModal,
     confirmDeleteMessage,
-    removeMessageFromUI
+    removeMessageFromUI,
+    toggleVoicePlay,
+    seekVoiceProgress,
+    initVoiceDuration,
+    updateVoiceProgress,
+    resetVoicePlayer
   };
 })();
 

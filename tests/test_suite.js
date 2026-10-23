@@ -280,6 +280,94 @@ async function runTests() {
       client2.disconnect();
     }
 
+    // ----------------------------------------------------
+    // TEST 8: File Download Auth via ?token= Query Param
+    // ----------------------------------------------------
+    console.log('\n📥 Test Group 8: File Download Auth with ?token=');
+    {
+      // Create a dummy test file in public/uploads if needed
+      const fs = require('fs');
+      const testUploadsDir = path.join(__dirname, '../public/uploads');
+      if (!fs.existsSync(testUploadsDir)) fs.mkdirSync(testUploadsDir, { recursive: true });
+      const testFileName = `test_doc_${Date.now()}.txt`;
+      const testFilePath = path.join(testUploadsDir, testFileName);
+      fs.writeFileSync(testFilePath, 'WordsLive Secret File Content 123');
+
+      // Request without token -> should fail 401
+      const noTokenRes = await fetch(`${baseUrl}/api/chat/download/${testFileName}`);
+      assert(noTokenRes.status === 401, 'Download without token is blocked with 401 Unauthorized');
+
+      // Request with ?token= -> should succeed 200
+      const tokenRes = await fetch(`${baseUrl}/api/chat/download/${testFileName}?token=${user1Token}`);
+      if (tokenRes.status !== 200) {
+        const errBody = await tokenRes.text();
+        console.error('DOWNLOAD ERROR STATUS:', tokenRes.status, 'BODY:', errBody);
+      }
+      assert(tokenRes.status === 200, 'Download with ?token= succeeds with 200 OK');
+      const downloadedText = await tokenRes.text();
+      assert(downloadedText.includes('WordsLive Secret File Content 123'), 'Downloaded file content matches');
+
+      // Clean up test file
+      try { fs.unlinkSync(testFilePath); } catch (_) {}
+    }
+
+    // ----------------------------------------------------
+    // TEST 9: Account Deletion & Username Recycling
+    // ----------------------------------------------------
+    console.log('\n🗑️ Test Group 9: Complete Account Deletion & Username Recycling');
+    {
+      // User 2 deletes their account
+      const delRes = await fetch(`${baseUrl}/api/auth/delete-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user2Token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const delData = await delRes.json();
+      assert(delRes.status === 200 && delData.success, 'User 2 account deleted successfully');
+
+      // User 2's old token is now invalidated
+      const meRes = await fetch(`${baseUrl}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${user2Token}` }
+      });
+      assert(meRes.status === 401, 'Deleted user token is rejected with 401');
+
+      const targetNik = user2Data.username;
+
+      // Check if User 2's old username is now available again!
+      const checkRes = await fetch(`${baseUrl}/api/auth/check-username?username=${targetNik}`);
+      const checkData = await checkRes.json();
+      assert(checkData.available === true, `Username @${targetNik} is completely freed and available again`);
+
+      // A brand new user (User 3) registers with that freed username
+      const user3Email = `new_${targetNik}@gmail.com`;
+      await fetch(`${baseUrl}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user3Email })
+      });
+      const stmts = require('../server/db').stmts;
+      const user3Otp = stmts.getLatestOtp.get(user3Email);
+      await fetch(`${baseUrl}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user3Email, code: user3Otp.code })
+      });
+
+      const regUser3Res = await fetch(`${baseUrl}/api/auth/register-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user3Email,
+          username: targetNik,
+          displayName: 'Yangi Jasur'
+        })
+      });
+      const regUser3Data = await regUser3Res.json();
+      assert((regUser3Res.status === 200 || regUser3Res.status === 201) && regUser3Data.success, `New user successfully claimed previously freed username @${targetNik}`);
+    }
+
     console.log('\n======================================================');
     console.log(`🎉 ALL TESTS PASSED! (${passCount} passed, ${failCount} failed)`);
     console.log('======================================================\n');

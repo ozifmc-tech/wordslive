@@ -134,14 +134,20 @@ function issueTokenWithSession(user, req) {
   return token;
 }
 
-// Authentication middleware
+// Authentication middleware (supports Bearer header and ?token= query parameter for file downloads)
 function authMiddleware(req, res, next) {
+  let token = null;
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = String(req.query.token).trim();
+  }
+
+  if (!token) {
     return res.status(401).json({ success: false, message: 'Kirish taqiqlangan: Token mavjud emas' });
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
     const user = stmts.getUserById.get(decoded.userId);

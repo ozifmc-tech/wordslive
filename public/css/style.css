@@ -782,7 +782,8 @@ body {
 }
 
 .profile-summary-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1261,21 +1262,15 @@ body.dark .msg-delete-btn {
 }
 
 .message-row:hover .msg-delete-btn,
-.msg-bubble-wrap:hover .msg-delete-btn,
-.message-row:active .msg-delete-btn {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .msg-delete-btn {
-    opacity: 0.55;
-  }
+.msg-bubble-wrap:hover .msg-delete-btn {
+  opacity: 0.85;
 }
 
 .msg-delete-btn:hover {
   transform: scale(1.15);
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
+  opacity: 1;
 }
 
 .message-bubble {
@@ -1287,7 +1282,118 @@ body.dark .msg-delete-btn {
   line-height: 1.42;
   word-break: break-word;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-  letter-spacing: -0.01em;
+  letter-spacing: normal;
+}
+
+.msg-text {
+  font-size: 13.8px;
+  line-height: 1.42;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Telegram-Style Custom Voice Player */
+.custom-voice-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  min-width: 190px;
+  max-width: 280px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.voice-play-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.15s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.message-row.outgoing .voice-play-btn {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.message-row.incoming .voice-play-btn {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+}
+
+.voice-play-btn:active {
+  transform: scale(0.92);
+}
+
+.voice-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.voice-wave-container {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  overflow: hidden;
+  padding: 2px 0;
+}
+
+.voice-wave-bar {
+  flex: 1;
+  min-width: 2.5px;
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+
+.message-row.outgoing .voice-wave-bar {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.message-row.outgoing .voice-wave-bar.played {
+  background: #ffffff;
+}
+
+.message-row.incoming .voice-wave-bar {
+  background: rgba(37, 99, 235, 0.25);
+}
+
+.message-row.incoming .voice-wave-bar.played {
+  background: var(--primary);
+}
+
+.voice-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.message-row.outgoing .voice-time-row {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.message-row.incoming .voice-time-row {
+  color: var(--text-muted);
 }
 
 .message-row.outgoing .message-bubble {
@@ -1366,11 +1472,11 @@ body.dark .msg-delete-btn {
 .chat-input {
   flex: 1;
   min-width: 0;
-  min-height: 40px;
+  min-height: 42px;
   max-height: 120px;
-  padding: 9px 14px;
-  font-size: 14px;
-  line-height: 1.4;
+  padding: 10px 14px;
+  font-size: 14.5px;
+  line-height: 1.45;
   border: 1.5px solid var(--border);
   border-radius: 20px;
   background: var(--bg-main);

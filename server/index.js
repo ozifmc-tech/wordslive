@@ -179,18 +179,30 @@ app.get('/api/chat/download/:filename', authMiddleware, (req, res) => {
       return res.status(400).json({ success: false, message: 'Yaroqsiz fayl nomi' });
     }
 
-    const safePath = path.join(__dirname, '../public/uploads', filename);
-    const uploadsDir = path.join(__dirname, '../public/uploads');
+    const safePath = path.resolve(__dirname, '../public/uploads', filename);
+    const uploadsDir = path.resolve(__dirname, '../public/uploads');
 
     if (!safePath.startsWith(uploadsDir) || !fs.existsSync(safePath)) {
       return res.status(404).json({ success: false, message: 'Fayl topilmadi' });
     }
 
+    const stat = fs.statSync(safePath);
     const originalName = req.query.name || filename;
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', stat.size);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(originalName)}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
-    return res.sendFile(safePath);
+
+    const fileStream = fs.createReadStream(safePath);
+    fileStream.on('error', (err) => {
+      console.error('[DOWNLOAD STREAM ERROR]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Faylni o\'qishda xatolik' });
+      }
+    });
+    return fileStream.pipe(res);
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Faylni yuklab olishda xatolik' });
   }
